@@ -1,3 +1,4 @@
+
 // src/ai/flows/generate-explanation.ts
 'use server';
 /**
@@ -63,7 +64,15 @@ const generateExplanationFlow = ai.defineFlow(
     outputSchema: GenerateExplanationOutputSchema,
   },
   async input => {
-    const {output} = await generateExplanationPrompt(input);
-    return output!;
+    // Pre-process the input to ensure data is in a string format for the prompt
+    const promptInput = {
+      ...input,
+      data: input.data ? JSON.stringify(input.data, null, 2) : 'Not available',
+    };
+
+    const {output} = await generateExplanationPrompt(promptInput);
+
+    // Provide a fallback explanation if the model returns null
+    return output || "An explanation could not be generated for this entry.";
   }
 );
