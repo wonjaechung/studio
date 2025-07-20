@@ -2,11 +2,10 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import type { AppState, ModalConfig } from '@/lib/types';
+import type { AppState, ModalConfig, Question } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { generateExplanation } from '@/ai/flows/generate-explanation';
-import { generateGameQuestion } from '@/ai/flows/generate-game-question';
-import { checkGameAnswer } from '@/ai/flows/check-game-answer';
+import { statsQuestions } from '@/lib/questions';
 import * as math from 'mathjs';
 import { stats } from '@/lib/stats';
 import { ImporterPanel } from './panels/ImporterPanel';
@@ -88,25 +87,19 @@ export function MainApp() {
     }
   }, []);
 
-  const handleNewGameQuestion = useCallback(async () => {
-    try {
-      const questionData = await generateGameQuestion();
-      setState(prev => ({
-        ...prev,
-        game: { ...prev.game, question: questionData }
-      }));
-      addHistoryEntry({
-        input: `New Question (${questionData.topic})`,
-        output: questionData.question,
-        explanation: "Use the app's tools to solve the problem. Type your answer in the console below."
-      });
-    } catch (error) {
-      console.error("Failed to generate game question:", error);
-      toast({ variant: 'destructive', title: "Error", description: "Could not load a new game question. Please try again." });
-      // Deactivate game if question fails
-      setState(prev => ({ ...prev, game: { ...prev.game, isActive: false } }));
-    }
-  }, [addHistoryEntry, toast]);
+    const handleNewGameQuestion = useCallback(() => {
+        const questionData = statsQuestions[Math.floor(Math.random() * statsQuestions.length)];
+        const answerOptionsText = questionData.answerOptions.map((opt, i) => `${String.fromCharCode(65 + i)}. ${opt.text}`).join('\n');
+        setState(prev => ({
+            ...prev,
+            game: { ...prev.game, question: questionData }
+        }));
+        addHistoryEntry({
+            input: `New Question (${questionData.tags.join(', ')})`,
+            output: `${questionData.questionText}\n\n${answerOptionsText}`,
+            explanation: "Select the correct letter (A, B, C, D, or E) and type it in the console below."
+        });
+    }, [addHistoryEntry]);
   
   const toggleGameMode = useCallback(() => {
     setState(prev => {
@@ -169,18 +162,27 @@ export function MainApp() {
     });
   };
 
-  const handleRunCommand = async (command: string) => {
-    if (appState.game.isActive && appState.game.question) {
-      const { question, answer } = appState.game.question;
-      const { isCorrect, feedback } = await checkGameAnswer({ question, userAnswer: command, correctAnswer: answer });
-      const output = isCorrect ? 'Correct!' : 'Incorrect';
-      addHistoryEntry({ input: `Answer: ${command}`, output: `${output}\n${feedback}` });
-      if (isCorrect) {
-        toast({ title: "Correct!", description: "Generating next question..." });
-        handleNewGameQuestion();
-      }
-      return;
-    }
+    const handleRunCommand = async (command: string) => {
+        if (appState.game.isActive && appState.game.question) {
+            const answerLetter = command.trim().toUpperCase();
+            const { question } = appState.game;
+            const choiceIndex = answerLetter.charCodeAt(0) - 65; // A=0, B=1, etc.
+            
+            if (choiceIndex >= 0 && choiceIndex < question.answerOptions.length) {
+                const selectedOption = question.answerOptions[choiceIndex];
+                const isCorrect = selectedOption.isCorrect;
+                const feedback = isCorrect ? "Correct! Well done." : `Not quite. The correct answer was ${question.answerOptions.find(o => o.isCorrect)!.text.charAt(0)}.`;
+                addHistoryEntry({ input: `Answer: ${answerLetter}`, output: feedback });
+
+                if (isCorrect) {
+                    toast({ title: "Correct!", description: "Generating next question..." });
+                    handleNewGameQuestion();
+                }
+            } else {
+                addHistoryEntry({ input: `Answer: ${command}`, output: "Invalid answer. Please enter a letter (A-E)." });
+            }
+            return;
+        }
     
     const pythonCommand = "df = pd.read_csv('lab_data_1.csv')";
     const sqlCommand = "SELECT study_hours, exam_score FROM student_performance;";
@@ -394,7 +396,7 @@ export function MainApp() {
     if (!pasteData) return;
 
     setState(prev => {
-        const rows = pasteData.split('\n');
+        const rows = pasteData.split('\n').map(r => r.trim());
         const { activeCell } = prev.spreadsheet;
         const newColumns = [...prev.spreadsheet.columns];
 

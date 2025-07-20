@@ -41,9 +41,25 @@ export interface GraphingState {
   pendingPlot: { indices: number[] } | null;
 }
 
+export interface Question {
+  id: string;
+  year: number;
+  questionNumber: number;
+  questionText: string;
+  chartType?: string;
+  chartData?: any;
+  answerOptions: { text: string; isCorrect: boolean }[];
+  explanation: {
+    ko: { concept: string; steps: string[]; distractors: string[]; summary: string; };
+    en: { concept: string; steps: string[]; distractors: string[]; summary: string; };
+  };
+  tags: string[];
+  difficulty: string;
+}
+
 export interface GameState {
     isActive: boolean;
-    question: import('@/ai/flows/generate-game-question').GameQuestion | null;
+    question: Question | null;
     timeLeft: number;
 }
 
