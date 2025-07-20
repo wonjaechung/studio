@@ -351,43 +351,53 @@ export default function Home() {
         function getSpreadsheetExport() {
             const { columns } = appState.spreadsheet;
             if (columns.length === 0) return '';
-            const header = columns.map(c => `"${c.name}"`).join(',');
-            let csv = header + '\n';
-            const numRows = Math.max(...columns.map(c => c.data.length));
+            const namedCols = columns.filter(c => c.name && !c.formula);
+            if (namedCols.length === 0) return '';
+            
+            const header = namedCols.map(c => `"${c.name}"`).join('\t');
+            let tsv = header + '\n';
+            
+            const numRows = Math.max(0, ...namedCols.map(c => c.data.length));
+
             for (let i = 0; i < numRows; i++) {
-                csv += columns.map(c => `"${c.data[i] || ''}"`).join(',') + '\n';
+                tsv += namedCols.map(c => `${c.data[i] || ''}`).join('\t') + '\n';
             }
-            return csv;
+            return tsv;
         }
-        function getViewerExport() {
-            const { currentView } = appState.graphing;
-            if (currentView.type === 'plot') {
-                return `<!DOCTYPE html>
-<html>
-<head>
-  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-</head>
-<body>
-  <div id="plot"></div>
-  <script>
-    Plotly.newPlot('plot', ${JSON.stringify(currentView.data)}, ${JSON.stringify(currentView.layout)});
-  </script>
-</body>
-</html>`;
-            } else if (currentView === 'dataframe') {
-                return graphPlotDiv?.innerHTML || '<!-- No dataframe to export -->';
+        
+        async function getViewerExport(e: DragEvent) {
+             const { currentView } = appState.graphing;
+            if (currentView.type !== 'plot' && currentView.type !== 'dataframe') {
+                e.preventDefault();
+                return;
             }
-            return '<!-- No plot to export -->';
+
+            try {
+                const dataUrl = await Plotly.toImage(graphPlotDiv, { format: 'png', width: 800, height: 600 });
+                const mimeType = 'image/png';
+                const filename = 'insightflow-plot.png';
+                e.dataTransfer!.setData('DownloadURL', `${mimeType}:${filename}:${dataUrl}`);
+            } catch (error) {
+                console.error("Failed to generate image for export", error);
+                e.preventDefault();
+            }
         }
 
-        function setupDragToExport(toggle: HTMLInputElement, panelHeader: HTMLElement, contentGetter: () => string, mimeType: string) {
+
+        function setupDragToExport(toggle: HTMLInputElement, panelHeader: HTMLElement, contentGetter: (e: DragEvent) => any, mimeType?: string) {
             toggle.addEventListener('change', () => {
                 panelHeader.draggable = toggle.checked;
                 panelHeader.style.cursor = toggle.checked ? 'grab' : 'default';
             });
             panelHeader.addEventListener('dragstart', (e) => {
-                if (!toggle.checked) return;
-                e.dataTransfer!.setData(mimeType, contentGetter());
+                if (!toggle.checked || !e.dataTransfer) return;
+
+                // The getViewerExport has its own async logic and sets dataTransfer
+                if(contentGetter === getViewerExport) {
+                    getViewerExport(e);
+                } else {
+                    e.dataTransfer!.setData(mimeType!, contentGetter(e));
+                }
             });
         }
         
@@ -471,8 +481,9 @@ export default function Home() {
 
         // Setup Export Drags
         setupDragToExport(exportCalcToggle, document.querySelector('#calculator .panel-header')!, getCalculatorExport, 'text/plain');
-        setupDragToExport(exportViewerToggle, document.querySelector('#graphing .panel-header')!, getViewerExport, 'text/html');
-        setupDragToExport(exportSheetToggle, document.querySelector('#spreadsheet .panel-header')!, getSpreadsheetExport, 'text/csv');
+        setupDragToExport(exportViewerToggle, document.querySelector('#graphing .panel-header')!, getViewerExport);
+        setupDragToExport(exportSheetToggle, document.querySelector('#spreadsheet .panel-header')!, getSpreadsheetExport, 'text/plain');
+
 
         renderCalculator();
         renderSpreadsheet();
