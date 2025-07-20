@@ -142,3 +142,5 @@ export function CalculatorPanel({ state, gameState, onRunCommand, onToggleGameMo
     </Card>
   );
 }
+
+    
