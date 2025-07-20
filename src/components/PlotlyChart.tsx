@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef } from 'react';
-import Plotly from 'plotly.js-dist-min';
+import type Plotly from 'plotly.js-dist-min';
 
 interface PlotlyChartProps {
   data: Plotly.Data[];
@@ -26,13 +26,28 @@ const baseLayout: Partial<Plotly.Layout> = {
 
 export function PlotlyChart({ data, layout }: PlotlyChartProps) {
   const chartDiv = useRef<HTMLDivElement>(null);
+  const PlotlyRef = useRef<typeof Plotly | null>(null);
 
   useEffect(() => {
-    if (chartDiv.current) {
-      const fullLayout = { ...baseLayout, ...layout };
-      Plotly.react(chartDiv.current, data, fullLayout, { responsive: true });
-    }
+    import('plotly.js-dist-min').then(PlotlyModule => {
+      PlotlyRef.current = PlotlyModule;
+      if (chartDiv.current && PlotlyRef.current) {
+        const fullLayout = { ...baseLayout, ...layout };
+        PlotlyRef.current.react(chartDiv.current, data, fullLayout, { responsive: true });
+      }
+    });
   }, [data, layout]);
+
+  useEffect(() => {
+    // This is to handle window resize
+    const resizeHandler = () => {
+      if (chartDiv.current && PlotlyRef.current) {
+        PlotlyRef.current.Plots.resize(chartDiv.current);
+      }
+    };
+    window.addEventListener('resize', resizeHandler);
+    return () => window.removeEventListener('resize', resizeHandler);
+  }, []);
 
   return <div ref={chartDiv} className="w-full h-full" />;
 }

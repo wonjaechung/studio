@@ -76,7 +76,7 @@ export const stats = {
         function incompleteBeta(x: number, a: number, b: number): number {
             if (x <= 0) return 0;
             if (x >= 1) return 1;
-            const gammaln = math.gammaln as (n: number) => number;
+            const gammaln = (n: number) => Math.log((math.gamma as (n: number) => number)(n));
             const bt = Math.exp(gammaln(a + b) - gammaln(a) - gammaln(b) + a * Math.log(x) + b * Math.log(1 - x));
             if (x < (a + 1) / (a + b + 2)) {
                 return bt * continuedFraction(x, a, b) / a;

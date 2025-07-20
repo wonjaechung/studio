@@ -1,17 +1,23 @@
 "use client";
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { PlotlyChart } from '@/components/PlotlyChart';
 import type { GraphingState, SpreadsheetColumn, PlotView } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { ScrollArea } from '../ui/scroll-area';
 import { stats } from '@/lib/stats';
+import { Skeleton } from '../ui/skeleton';
+
+const PlotlyChart = dynamic(() => import('@/components/PlotlyChart').then(mod => mod.PlotlyChart), {
+  ssr: false,
+  loading: () => <Skeleton className="w-full h-full" />
+});
 
 
 interface GraphingPanelProps {
