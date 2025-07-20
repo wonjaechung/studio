@@ -76,7 +76,7 @@ export const stats = {
         function incompleteBeta(x: number, a: number, b: number): number {
             if (x <= 0) return 0;
             if (x >= 1) return 1;
-            const gammaln = (n: number) => Math.log((math.gamma as (n: number) => number)(n));
+            const gammaln = (n: number) => (math.log((math.gamma as (n: number) => number)(n)) as number);
             const bt = Math.exp(gammaln(a + b) - gammaln(a) - gammaln(b) + a * Math.log(x) + b * Math.log(1 - x));
             if (x < (a + 1) / (a + b + 2)) {
                 return bt * continuedFraction(x, a, b) / a;
@@ -105,5 +105,16 @@ export const stats = {
         }
         let p = incompleteBeta(x, df / 2, 0.5);
         return t > 0 ? 1 - 0.5 * p : 0.5 * p;
+    },
+    linReg: (xData: number[], yData: number[]) => {
+        const n = xData.length;
+        const sumX = stats.sum(xData);
+        const sumY = stats.sum(yData);
+        const sumXY = stats.sum(xData.map((x, i) => x * yData[i]));
+        const sumX2 = stats.sum(xData.map(x => x*x));
+        const b = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+        const a = (sumY / n) - b * (sumX / n);
+        const r = math.corr(xData, yData) as number;
+        return { a, b, r };
     }
 };

@@ -41,6 +41,12 @@ export interface GraphingState {
   pendingPlot: { indices: number[] } | null;
 }
 
+export interface GameState {
+    isActive: boolean;
+    question: import('@/ai/flows/generate-game-question').GameQuestion | null;
+    timeLeft: number;
+}
+
 export interface ModalField {
   id?: string;
   label: string;
@@ -69,4 +75,5 @@ export interface AppState {
   graphing: GraphingState;
   modal: ModalConfig | null;
   isStatsMenuOpen: boolean;
+  game: GameState;
 }
