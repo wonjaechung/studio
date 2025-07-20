@@ -23,6 +23,32 @@ function invNorm(p: number): number {
     return x;
 }
 
+// Low-level gamma function needed for chi-square cdf
+function logGamma(x: number) {
+    let tmp = (x - 0.5) * Math.log(x + 4.5) - (x + 4.5);
+    let ser = 1.0 + 76.18009173 / (x + 0) - 86.50532033 / (x + 1)
+            + 24.01409822 / (x + 2) - 1.231739516 / (x + 3)
+            + 0.00120858003 / (x + 4) - 0.00000536382 / (x + 5);
+    return tmp + Math.log(ser * Math.sqrt(2 * Math.PI));
+}
+
+function incompleteGamma(s: number, x: number) {
+    if (x < 0) return 0;
+    const gln = logGamma(s);
+    let ap = s;
+    let sum = 1 / s;
+    let del = sum;
+    for (let n = 1; n < 100; n++) {
+        ap += 1;
+        del = del * x / ap;
+        sum += del;
+        if (Math.abs(del) < Math.abs(sum) * 1e-7) {
+            return sum * Math.exp(-x + s * Math.log(x) - gln);
+        }
+    }
+    return sum * Math.exp(-x + s * Math.log(x) - gln);
+}
+
 export const stats = {
     sum: (arr: number[]) => arr.reduce((acc, val) => acc + val, 0),
     mean: (arr: number[]) => arr.length === 0 ? 0 : stats.sum(arr) / arr.length,
@@ -116,5 +142,9 @@ export const stats = {
         const a = (sumY / n) - b * (sumX / n);
         const r = math.corr(xData, yData) as number;
         return { a, b, r };
+    },
+    chi2cdf: (x: number, df: number) => {
+        if (x < 0 || df <= 0) return 0;
+        return incompleteGamma(df / 2, x / 2);
     }
 };

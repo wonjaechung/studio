@@ -50,7 +50,7 @@ export interface GameState {
 export interface ModalField {
   id?: string;
   label: string;
-  type?: 'text' | 'select' | 'static';
+  type?: 'text' | 'select' | 'static' | 'select_multi';
   options?: string[];
   value?: string;
 }

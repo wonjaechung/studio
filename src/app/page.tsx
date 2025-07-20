@@ -189,8 +189,8 @@ export default function Home() {
         }
     }, [appState.graphing.functionInput]);
 
-    const handleModalAction = (action: string, data: Record<string, string>) => {
-        const actions: Record<string, (data: Record<string, string>) => void> = {
+    const handleModalAction = (action: string, data: Record<string, string | string[]>) => {
+        const actions: Record<string, (data: Record<string, any>) => void> = {
             closeModal: () => setAppState(prev => ({ ...prev, modal: null })),
             run1VarStats: (data) => {
                 const listName = data.x1list;
@@ -204,8 +204,7 @@ export default function Home() {
                 const xData = getColumnData(xlist);
                 const yData = getColumnData(ylist);
                 if (xData.length < 2 || xData.length !== yData.length) return showMessageModal("X and Y lists must have the same number of data points (at least 2).");
-                const n = xData.length; const sumX = stats.sum(xData); const sumY = stats.sum(yData); const sumXY = stats.sum(xData.map((x, i) => x * yData[i])); const sumX2 = stats.sum(xData.map(x => x*x)); const sumY2 = stats.sum(yData.map(y => y*y));
-                const b = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX); const a = (sumY / n) - b * (sumX / n); const r = math.corr(xData, yData) as number;
+                const { a, b, r } = stats.linReg(xData, yData);
                 addHistoryEntry({ type: 'LinReg', input: `LinReg for ${ylist} vs ${xlist}`, output: `y = ${a.toFixed(4)} + ${b.toFixed(4)}x\nr² = ${(r*r).toFixed(4)}`, data: { y: ylist, x: xlist, a, b, r, r2: r*r } }, true);
             },
             runTIntervalFromData: (data) => {
@@ -229,6 +228,71 @@ export default function Home() {
                 else if (alt === 'μ > μ₀') pVal = 1 - stats.tCdf(tStat, df);
                 else pVal = 2 * (1 - stats.tCdf(Math.abs(tStat), df));
                 addHistoryEntry({ type: 'tTest', input: `t-Test: μ ${alt.replace('μ', '')} ${mu0}`, output: `t=${tStat.toFixed(4)}, p=${pVal.toFixed(4)}`, data: { ...data, df, tStat, pVal } }, true);
+            },
+            run2PropZInt: (data) => {
+                const { x1, n1, x2, n2, clevel } = Object.fromEntries(Object.entries(data).map(([k, v]) => [k, parseFloat(v as string)]));
+                const p1 = x1 / n1; const p2 = x2 / n2;
+                const zStar = stats.invNorm(1 - (1-clevel)/2, 0, 1);
+                const se = Math.sqrt(p1 * (1 - p1) / n1 + p2 * (1 - p2) / n2);
+                const diff = p1 - p2;
+                const lower = diff - zStar * se; const upper = diff + zStar * se;
+                addHistoryEntry({ type: '2PropZInt', input: `2-Prop Z-Int`, output: `(${lower.toFixed(4)}, ${upper.toFixed(4)})`, data: { ...data, p1, p2, diff, lower, upper } }, true);
+            },
+            run2PropZTest: (data) => {
+                const { x1, n1, x2, n2, alt } = Object.fromEntries(Object.entries(data).map(([k, v]) => [k, k === 'alt' ? v : parseFloat(v as string)]));
+                const p1 = x1 / n1; const p2 = x2 / n2;
+                const pPooled = (x1 + x2) / (n1 + n2);
+                const se = Math.sqrt(pPooled * (1 - pPooled) * (1 / n1 + 1 / n2));
+                const zStat = (p1 - p2) / se;
+                let pVal;
+                if (alt === '< p2') pVal = stats.normalCdf(-Infinity, zStat, 0, 1);
+                else if (alt === '> p2') pVal = 1 - stats.normalCdf(-Infinity, zStat, 0, 1);
+                else pVal = 2 * (1 - stats.normalCdf(-Infinity, Math.abs(zStat), 0, 1));
+                addHistoryEntry({ type: '2PropZTest', input: `2-Prop Z-Test`, output: `z=${zStat.toFixed(4)}, p=${pVal.toFixed(4)}`, data: { ...data, p1, p2, pPooled, zStat, pVal } }, true);
+            },
+             runChi2GOF: (data) => {
+                const obsData = getColumnData(data.observed);
+                const expData = getColumnData(data.expected);
+                const df = parseInt(data.df);
+                if (obsData.length !== expData.length || obsData.length === 0) return showMessageModal("Observed and Expected lists must be of the same length.");
+                const chi2Stat = stats.sum(obsData.map((obs, i) => Math.pow(obs - expData[i], 2) / expData[i]));
+                const pVal = 1 - stats.chi2cdf(chi2Stat, df);
+                addHistoryEntry({ type: 'chi2GOF', input: `χ² GOF-Test`, output: `χ²=${chi2Stat.toFixed(4)}, p=${pVal.toFixed(4)}`, data: { ...data, chi2Stat, pVal } }, true);
+            },
+            runChi2Test: (data) => {
+                const colNames = data.observed as string[];
+                const matrix = colNames.map(name => getColumnData(name));
+                const numRows = matrix[0].length;
+                const numCols = matrix.length;
+                if (numRows < 2 || numCols < 2) return showMessageModal("Requires at least a 2x2 matrix of data.");
+
+                const rowTotals = Array(numRows).fill(0);
+                const colTotals = Array(numCols).fill(0);
+                let total = 0;
+
+                for (let r = 0; r < numRows; r++) {
+                    for (let c = 0; c < numCols; c++) {
+                        rowTotals[r] += matrix[c][r];
+                        colTotals[c] += matrix[c][r];
+                        total += matrix[c][r];
+                    }
+                }
+                
+                let chi2Stat = 0;
+                let expectedMatrix = [];
+                for (let r = 0; r < numRows; r++) {
+                    let expectedRow = [];
+                    for (let c = 0; c < numCols; c++) {
+                        const expected = (rowTotals[r] * colTotals[c]) / total;
+                        expectedRow.push(expected);
+                        chi2Stat += Math.pow(matrix[c][r] - expected, 2) / expected;
+                    }
+                    expectedMatrix.push(expectedRow);
+                }
+
+                const df = (numRows - 1) * (numCols - 1);
+                const pVal = 1 - stats.chi2cdf(chi2Stat, df);
+                addHistoryEntry({ type: 'chi2Test', input: `χ² 2-Way Test`, output: `χ²=${chi2Stat.toFixed(4)}, p=${pVal.toFixed(4)}`, data: { ...data, df, chi2Stat, pVal, matrix, expectedMatrix } }, true);
             },
             runNormalCdf: (data) => {
                 const { lower, upper, mu, sigma } = Object.fromEntries(Object.entries(data).map(([k,v]) => [k, parseFloat(v)]));
