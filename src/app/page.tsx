@@ -332,7 +332,7 @@ export default function Home() {
         setAppState(prev => ({ ...prev, modal: null }));
     };
 
-    const handleNewGameQuestion = async () => {
+    const handleNewGameQuestion = useCallback(async () => {
         try {
             const questionData = await generateGameQuestion();
             setAppState(prev => ({ ...prev, game: { ...prev.game, question: questionData } }));
@@ -346,7 +346,7 @@ export default function Home() {
             showMessageModal("Could not load a new game question. Please try again.", "Error");
             setAppState(prev => ({ ...prev, game: { ...prev.game, isActive: false } }));
         }
-    };
+    }, [addHistoryEntry]);
 
     const toggleGameMode = () => {
         setAppState(prev => {
@@ -423,7 +423,7 @@ export default function Home() {
                                     if(appState.modal?.title.includes("Clear")) {
                                         setAppState(prev => ({...prev, spreadsheet: initialAppState.spreadsheet}))
                                     }
-                                    setAppState(prev => ({...prev, modal: null}));
+                                    setAppState(prev => ({...prev, modal: null }));
                                 }}>OK</AlertDialogAction>
                             </AlertDialogFooter>
                         </AlertDialogContent>
@@ -432,7 +432,7 @@ export default function Home() {
                     <ActionModal
                         modalConfig={appState.modal}
                         columns={appState.spreadsheet.columns.filter(c => c.name)}
-                        onClose={() => setAppState(prev => ({...prev, modal: null}))}
+                        onClose={() => setAppState(prev => ({...prev, modal: null }))}
                         onAction={handleModalAction}
                     />
                 )
