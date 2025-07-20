@@ -123,28 +123,28 @@ export function GraphingPanel({ state, spreadsheetColumns, onFunctionInputChange
     };
 
     const handlePlotSelect = (type: 'histogram' | 'boxplot' | 'scatter') => {
-        if (state.currentView.type !== 'context-menu') return;
-        const { colIndices } = state.currentView;
+        if (!state.pendingPlot) return;
+        const { indices } = state.pendingPlot;
 
         let plotView: PlotView = { type: 'default' };
 
         try {
-            if (type === 'histogram' && colIndices.length === 1) {
-                const col = spreadsheetColumns[colIndices[0]];
+            if (type === 'histogram' && indices.length === 1) {
+                const col = spreadsheetColumns[indices[0]];
                 const data = getColumnData(col.name);
                 plotView = { type: 'plot', data: [{ x: data, type: 'histogram', marker: { color: 'hsl(var(--accent))' } }], layout: { title: `Histogram of ${col.name}` } };
-            } else if (type === 'boxplot' && colIndices.length === 1) {
-                const col = spreadsheetColumns[colIndices[0]];
+            } else if (type === 'boxplot' && indices.length === 1) {
+                const col = spreadsheetColumns[indices[0]];
                 const data = getColumnData(col.name);
                 plotView = { type: 'plot', data: [{ y: data, type: 'box', name: col.name, marker: { color: 'hsl(var(--primary))' } }], layout: { title: `Box Plot of ${col.name}` } };
-            } else if (type === 'scatter' && colIndices.length === 2) {
-                const col1 = spreadsheetColumns[colIndices[0]];
-                const col2 = spreadsheetColumns[colIndices[1]];
+            } else if (type === 'scatter' && indices.length === 2) {
+                const col1 = spreadsheetColumns[indices[0]];
+                const col2 = spreadsheetColumns[indices[1]];
                 const xData = getColumnData(col1.name);
                 const yData = getColumnData(col2.name);
                 if (xData.length < 2 || yData.length < 2 || xData.length !== yData.length) {
                     showMessageModal("For a scatter plot, both columns must have the same number of data points (at least 2).");
-                    setGraphingState({ currentView: { type: 'default' }});
+                    setGraphingState({ currentView: { type: 'default' }, pendingPlot: null });
                     return;
                 }
                 const {a, b, r} = stats.linReg(xData, yData);
@@ -152,7 +152,7 @@ export function GraphingPanel({ state, spreadsheetColumns, onFunctionInputChange
                 const yRange = xRange.map(x => a + b * x);
                 const scatterTrace = { x: xData, y: yData, mode: 'markers', type: 'scatter', marker: { color: '#F59E0B' }, name: 'Data' };
                 const lineTrace = { x: xRange, y: yRange, mode: 'lines', type: 'scatter', line: { color: '#EF4444', width: 2 }, name: 'LSRL' };
-                const layout = { title: `<b>${col1.name} vs. ${col2.name}</b><br>ŷ = ${a.toFixed(3)} + ${b.toFixed(3)}x | r²=${(r*r).toFixed(3)} | r=${r.toFixed(3)}`, xaxis: {title: col1.name }, yaxis: {title: col2.name }};
+                const layout = { title: `<b>${col1.name} vs. ${col2.name}</b><br>ŷ = ${a.toFixed(3)} + ${b.toFixed(3)}x | r²=${(r*r).toFixed(3)} | r=${r.toFixed(3)}`, xaxis: {title: col1.name }, yaxis: {title: col2.name }, showlegend: true};
                 plotView = { type: 'plot', data: [scatterTrace, lineTrace], layout };
             }
         } catch (error) {
@@ -160,7 +160,7 @@ export function GraphingPanel({ state, spreadsheetColumns, onFunctionInputChange
             showMessageModal("An error occurred while trying to create the plot.");
             plotView = { type: 'default' };
         }
-        setGraphingState({ currentView: plotView });
+        setGraphingState({ currentView: plotView, pendingPlot: null });
     };
 
     const handleDrop = (e: React.DragEvent) => {
@@ -178,7 +178,7 @@ export function GraphingPanel({ state, spreadsheetColumns, onFunctionInputChange
             }
 
             if (validCols.length > 0 && validCols.length <= 2) {
-                setGraphingState({ currentView: { type: 'context-menu', colIndices: validCols } });
+                 setGraphingState({ pendingPlot: { indices: validCols }});
             } else {
                 showMessageModal("Please drag one or two columns to plot.");
             }
@@ -236,27 +236,27 @@ export function GraphingPanel({ state, spreadsheetColumns, onFunctionInputChange
                     <Button onClick={onPlotFunction}>Plot</Button>
                 </div>
                 <div className="flex-grow relative min-h-0">
-                    {state.currentView.type === 'default' && (
+                    {state.currentView.type === 'default' && !state.pendingPlot && (
                         <div className="flex items-center justify-center h-full text-muted-foreground">
                             Drop columns here to plot data
                         </div>
                     )}
-                    {state.currentView.type === 'plot' && (
+                    {state.currentView.type === 'plot' && !state.pendingPlot && (
                         <PlotlyChart 
                             data={state.currentView.data} 
                             layout={state.currentView.layout} 
                             ref={chartRef}
                         />
                     )}
-                    {state.currentView.type === 'dataframe' && (
+                    {state.currentView.type === 'dataframe' && !state.pendingPlot && (
                         <DataFrameViewer columns={spreadsheetColumns} />
                     )}
-                    {state.currentView.type === 'context-menu' && (
+                    {state.pendingPlot && (
                         <PlotContextMenu 
-                            colIndices={state.currentView.colIndices}
+                            colIndices={state.pendingPlot.indices}
                             columns={spreadsheetColumns}
                             onPlot={handlePlotSelect}
-                            onCancel={() => setGraphingState({ currentView: { type: 'default' } })}
+                            onCancel={() => setGraphingState({ pendingPlot: null })}
                         />
                     )}
                 </div>

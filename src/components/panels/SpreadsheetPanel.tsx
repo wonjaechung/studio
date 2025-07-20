@@ -115,7 +115,7 @@ export function SpreadsheetPanel({ state, setState, onMenuClick, onClearClick }:
       
       const nextActiveCell = moveNext ? { col, row: row + 1 } : activeCell;
 
-      return { isEditing: false, columns: newColumns, activeCell: nextActiveCell };
+      return { ...prevState, isEditing: false, columns: newColumns, activeCell: nextActiveCell };
     });
   }
 
@@ -134,7 +134,7 @@ export function SpreadsheetPanel({ state, setState, onMenuClick, onClearClick }:
         if(columns[i]?.name) colIndices.push(i);
     }
     
-    if (colIndices.length > 2 || colIndices.length === 0) {
+    if (colIndices.length === 0 || colIndices.length > 2) {
         e.preventDefault();
         return;
     }
