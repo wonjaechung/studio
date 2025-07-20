@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import type { GameQuestion } from '@/ai/flows/generate-game-question';
 import * as math from 'mathjs';
 import { generateExplanation } from '@/ai/flows/generate-explanation';
@@ -12,8 +12,9 @@ import { useToast } from '@/hooks/use-toast';
 export function MainApp() {
     const { toast } = useToast();
     const gameTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const [isGameActive, setIsGameActive] = React.useState(false);
+    const [gameTimeLeft, setGameTimeLeft] = React.useState(600);
 
-    // Using refs for state to bridge the gap with the original imperative code
     const appStateRef = useRef({
         modal: null as HTMLElement | null,
         spreadsheet: {
@@ -39,9 +40,106 @@ export function MainApp() {
             timeLeft: 600,
         }
     });
+     
+    const addHistoryEntry = useCallback(async (entry: Omit<typeof appStateRef.current.calculator.history[0], 'id'>, explain = false) => {
+        const appState = appStateRef.current;
+        const newEntry = { ...entry, id: crypto.randomUUID() };
+        appState.calculator.history.unshift(newEntry);
+        // This is a bit of a hack to force a re-render. In a full React state model, this would be cleaner.
+        // We'll just update a dummy state to trigger a re-render for the history.
+        // For now, manual DOM render is happening inside useEffect
+        const calculatorDisplay = document.getElementById('calculator-display')!;
+        if(calculatorDisplay) renderCalculator();
 
-    // This effect runs once on mount, setting up all event listeners and initial renders.
-    // It replicates the behavior of the original <script> tag.
+        if (explain) {
+            try {
+                const explanation = await generateExplanation({ input: newEntry.input, output: newEntry.output, type: newEntry.type, data: newEntry.data });
+                const entryIndex = appState.calculator.history.findIndex(h => h.id === newEntry.id);
+                if (entryIndex > -1) {
+                    appState.calculator.history[entryIndex].explanation = explanation;
+                }
+            } catch (error) {
+                console.error("Failed to generate explanation:", error);
+                const entryIndex = appState.calculator.history.findIndex(h => h.id === newEntry.id);
+                if (entryIndex > -1) {
+                    appState.calculator.history[entryIndex].explanation = "Could not generate an explanation.";
+                }
+            }
+             if(calculatorDisplay) renderCalculator(); // Re-render with the explanation
+        }
+    }, []);
+
+    const renderCalculator = useCallback(() => {
+        const appState = appStateRef.current;
+        const calculatorDisplay = document.getElementById('calculator-display');
+        if (!calculatorDisplay) return;
+
+        let historyHTML = '<div class="calculator-display">';
+        appState.calculator.history.forEach(entry => {
+            historyHTML += `<div class="calc-entry">
+                <div class="calc-input">${entry.input}</div>
+                <div class="calc-output">${entry.output}</div>
+                ${entry.explanation === undefined && entry.type ? `<div class="font-sans text-xs text-muted-foreground bg-secondary p-2 rounded-md mt-2 animate-pulse"><div class="h-2.5 bg-gray-600 rounded-full w-48 mb-2"></div><div class="h-2 bg-gray-600 rounded-full max-w-[360px]"></div></div>` : ''}
+                ${entry.explanation ? `<div class="calc-explanation">${entry.explanation}</div>` : ''}
+            </div>`;
+        });
+        historyHTML += '</div>';
+        calculatorDisplay.innerHTML = historyHTML;
+    }, []);
+
+    const handleNewGameQuestion = useCallback(async () => {
+        const appState = appStateRef.current;
+        try {
+            const questionData = await generateGameQuestion();
+            appState.game.question = questionData;
+            addHistoryEntry({
+                input: `New Question (${questionData.topic})`,
+                output: questionData.question,
+                explanation: "Use the app's tools to solve the problem. Type your answer in the console below."
+            });
+        } catch (error) {
+            console.error("Failed to generate game question:", error);
+            // Using a simple alert for now as showMessageModal is inside useEffect
+            alert("Could not load a new game question. Please try again.");
+            toggleGameMode();
+        }
+    }, [addHistoryEntry]);
+
+    const toggleGameMode = useCallback(() => {
+        const appState = appStateRef.current;
+        const newIsActive = !appState.game.isActive;
+        appState.game.isActive = newIsActive;
+        setIsGameActive(newIsActive); // Also update React state to trigger re-render
+
+        const calculatorPanel = document.getElementById('calculator');
+        const titleEl = calculatorPanel?.querySelector('.panel-title');
+        
+        if (newIsActive) {
+            if (titleEl) titleEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-gamepad-2 inline-block mr-2 text-primary"><line x1="6" x2="10" y1="12" y2="12"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="15" x2="15.01" y1="13" y2="13"/><line x1="18" x2="18.01" y1="10" y2="10"/><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.01.152v0a4.5 4.5 0 0 0 4.5 4.5h7.64a4.5 4.5 0 0 0 4.5-4.5v0c0-.05-.004-.1-.01-.152A4 4 0 0 0 17.32 5Z"/><path d="M2 12h1.5a1 1 0 0 1 1 1.5 2 2 0 0 0 2 2 1 1 0 0 0 1-1.5V12h10.5v1.5a1 1 0 0 0 1 1.5 2 2 0 0 0 2-2 1 1 0 0 1 1-1.5H22"/></svg>Game Mode`;
+            
+            handleNewGameQuestion();
+            appState.game.timeLeft = 600;
+            setGameTimeLeft(600);
+            
+            if (gameTimerRef.current) clearInterval(gameTimerRef.current);
+            gameTimerRef.current = setInterval(() => {
+                appState.game.timeLeft--;
+                setGameTimeLeft(prevTime => prevTime - 1); // Update React state for timer
+                if (appState.game.timeLeft <= 0) {
+                    if(gameTimerRef.current) clearInterval(gameTimerRef.current);
+                    addHistoryEntry({ input: "Time's Up!", output: "Game Over.", explanation: "Click Game Mode to play again." });
+                    toggleGameMode();
+                }
+            }, 1000);
+
+        } else {
+            if (titleEl) titleEl.textContent = 'Calculator / Console';
+            if (gameTimerRef.current) clearInterval(gameTimerRef.current);
+            appState.game.question = null;
+        }
+    }, [handleNewGameQuestion, addHistoryEntry]);
+
+
     useEffect(() => {
         let Plotly: typeof import('plotly.js-dist-min');
         import('plotly.js-dist-min').then(module => {
@@ -141,43 +239,6 @@ export function MainApp() {
                     };
                 }
             }
-        };
-
-        const addHistoryEntry = async (entry: Omit<typeof appState.calculator.history[0], 'id'>, explain = false) => {
-            const newEntry = { ...entry, id: crypto.randomUUID() };
-            appState.calculator.history.unshift(newEntry);
-            renderCalculator(); // Render with placeholder
-        
-            if (explain) {
-                try {
-                    const explanation = await generateExplanation({ input: newEntry.input, output: newEntry.output, type: newEntry.type, data: newEntry.data });
-                    const entryIndex = appState.calculator.history.findIndex(h => h.id === newEntry.id);
-                    if (entryIndex > -1) {
-                        appState.calculator.history[entryIndex].explanation = explanation;
-                    }
-                } catch (error) {
-                    console.error("Failed to generate explanation:", error);
-                    const entryIndex = appState.calculator.history.findIndex(h => h.id === newEntry.id);
-                    if (entryIndex > -1) {
-                        appState.calculator.history[entryIndex].explanation = "Could not generate an explanation.";
-                    }
-                }
-                renderCalculator(); // Re-render with the explanation
-            }
-        };
-        
-        const renderCalculator = () => {
-            let historyHTML = '<div class="calculator-display">';
-            appState.calculator.history.forEach(entry => {
-                historyHTML += `<div class="calc-entry">
-                    <div class="calc-input">${entry.input}</div>
-                    <div class="calc-output">${entry.output}</div>
-                    ${entry.explanation === undefined && entry.type ? `<div class="font-sans text-xs text-muted-foreground bg-secondary p-2 rounded-md mt-2 animate-pulse"><div class="h-2.5 bg-gray-600 rounded-full w-48 mb-2"></div><div class="h-2 bg-gray-600 rounded-full max-w-[360px]"></div></div>` : ''}
-                    ${entry.explanation ? `<div class="calc-explanation">${entry.explanation}</div>` : ''}
-                </div>`;
-            });
-            historyHTML += '</div>';
-            calculatorDisplay.innerHTML = historyHTML;
         };
 
         const renderModal = (modalConfig: any) => {
@@ -335,59 +396,6 @@ export function MainApp() {
             menuHTML = `<div class="context-menu-title">Choose Plot Type</div><div class="context-menu-subtitle">${subtitle}</div><div class="context-menu-options">${optionsHTML}</div><button class="btn mt-4" data-plottype="cancel">Cancel</button>`;
             graphContextMenu.innerHTML = menuHTML;
             graphContextMenu.classList.remove('hidden');
-        };
-
-        // --- GAME LOGIC ---
-        const handleNewGameQuestion = async () => {
-            try {
-                const questionData = await generateGameQuestion();
-                appState.game.question = questionData;
-                addHistoryEntry({
-                    input: `New Question (${questionData.topic})`,
-                    output: questionData.question,
-                    explanation: "Use the app's tools to solve the problem. Type your answer in the console below."
-                });
-            } catch (error) {
-                console.error("Failed to generate game question:", error);
-                showMessageModal("Could not load a new game question. Please try again.", "Error");
-                toggleGameMode();
-            }
-        };
-
-        const toggleGameMode = () => {
-            appState.game.isActive = !appState.game.isActive;
-            const titleEl = calculatorPanel.querySelector('.panel-title')!;
-            const timerEl = document.getElementById('game-timer');
-            if (appState.game.isActive) {
-                titleEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-gamepad-2 inline-block mr-2 text-primary"><line x1="6" x2="10" y1="12" y2="12"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="15" x2="15.01" y1="13" y2="13"/><line x1="18" x2="18.01" y1="10" y2="10"/><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.01.152v0a4.5 4.5 0 0 0 4.5 4.5h7.64a4.5 4.5 0 0 0 4.5-4.5v0c0-.05-.004-.1-.01-.152A4 4 0 0 0 17.32 5Z"/><path d="M2 12h1.5a1 1 0 0 1 1 1.5 2 2 0 0 0 2 2 1 1 0 0 0 1-1.5V12h10.5v1.5a1 1 0 0 0 1 1.5 2 2 0 0 0 2-2 1 1 0 0 1 1-1.5H22"/></svg>Game Mode`;
-                if(!timerEl) {
-                    const newTimerEl = document.createElement('div');
-                    newTimerEl.id = 'game-timer';
-                    (titleEl.parentElement?.querySelector('.export-toggle'))?.insertAdjacentElement('beforebegin', newTimerEl);
-                }
-                handleNewGameQuestion();
-                appState.game.timeLeft = 600;
-                if (gameTimerRef.current) clearInterval(gameTimerRef.current);
-                gameTimerRef.current = setInterval(() => {
-                    appState.game.timeLeft--;
-                    const minutes = String(Math.floor(appState.game.timeLeft / 60)).padStart(2, '0');
-                    const seconds = String(appState.game.timeLeft % 60).padStart(2, '0');
-                    const timerDiv = document.getElementById('game-timer');
-                    if (timerDiv) {
-                        timerDiv.textContent = `${minutes}:${seconds}`;
-                    }
-                    if (appState.game.timeLeft <= 0) {
-                        clearInterval(gameTimerRef.current!);
-                        addHistoryEntry({ input: "Time's Up!", output: "Game Over.", explanation: "Click Game Mode to play again." });
-                        toggleGameMode();
-                    }
-                }, 1000);
-            } else {
-                titleEl.textContent = 'Calculator / Console';
-                timerEl?.remove();
-                if (gameTimerRef.current) clearInterval(gameTimerRef.current);
-                appState.game.question = null;
-            }
         };
 
         // --- ACTION HANDLERS ---
@@ -839,16 +847,12 @@ export function MainApp() {
         plotDefault();
 
         // Game Mode Button Listener
-        const gameModeButton = document.querySelector('#calculator .panel-header .btn[data-action="toggleGameMode"]');
-        if (gameModeButton) {
-            gameModeButton.addEventListener('click', toggleGameMode);
-        } else { // Let's create it if it doesn't exist.
-            const newGameBtn = document.createElement('button');
-            newGameBtn.className = 'btn';
-            newGameBtn.textContent = 'Game Mode';
-            newGameBtn.onclick = toggleGameMode;
-            calculatorPanel.querySelector('.panel-header')?.insertBefore(newGameBtn, calculatorPanel.querySelector('.export-toggle'));
-        }
+        const newGameBtn = document.createElement('button');
+        newGameBtn.className = 'btn';
+        newGameBtn.textContent = 'Game Mode';
+        newGameBtn.onclick = toggleGameMode;
+        calculatorPanel.querySelector('.panel-header')?.insertBefore(newGameBtn, calculatorPanel.querySelector('.export-toggle'));
+
 
         return () => {
             // Cleanup listeners if the component were to unmount
@@ -883,8 +887,9 @@ export function MainApp() {
             <div id="calculator" className="panel">
                 <div className="panel-header">
                     <h2 className="panel-title">Calculator / Console</h2>
-                    <button className="btn" onClick={() => appStateRef.current.game.isActive ? toggleGameMode() : toggleGameMode()}>
-                        {appStateRef.current.game.isActive ? 'End Game' : 'Game Mode'}
+                    {isGameActive && <div id="game-timer" className="text-sm font-mono text-primary animate-pulse">{String(Math.floor(gameTimeLeft / 60)).padStart(2, '0')}:{String(gameTimeLeft % 60).padStart(2, '0')}</div>}
+                    <button className="btn" onClick={toggleGameMode}>
+                        {isGameActive ? 'End Game' : 'Game Mode'}
                     </button>
                     <div className="export-toggle">
                         <span>Export</span>
