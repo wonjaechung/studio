@@ -52,8 +52,12 @@ export default function Home() {
     const { toast } = useToast();
     const gameTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-    const setSpreadsheetState = (update: Partial<SpreadsheetState>) => {
-        setAppState(prev => ({ ...prev, spreadsheet: { ...prev.spreadsheet, ...update } }));
+    const setSpreadsheetState = (update: Partial<SpreadsheetState> | ((prevState: SpreadsheetState) => Partial<SpreadsheetState>)) => {
+        if (typeof update === 'function') {
+            setAppState(prev => ({ ...prev, spreadsheet: { ...prev.spreadsheet, ...update(prev.spreadsheet) } }));
+        } else {
+            setAppState(prev => ({ ...prev, spreadsheet: { ...prev.spreadsheet, ...update } }));
+        }
     };
     const setCalculatorState = (update: Partial<CalculatorState>) => {
         setAppState(prev => ({ ...prev, calculator: { ...prev.calculator, ...update } }));
@@ -440,3 +444,5 @@ export default function Home() {
         </>
     );
 }
+
+    

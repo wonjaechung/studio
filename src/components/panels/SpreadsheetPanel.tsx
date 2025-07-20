@@ -251,3 +251,5 @@ export function SpreadsheetPanel({ state, setState, onMenuClick, onClearClick }:
     </Card>
   );
 }
+
+    

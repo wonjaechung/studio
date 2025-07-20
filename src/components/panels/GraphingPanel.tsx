@@ -283,3 +283,5 @@ export function GraphingPanel({ state, spreadsheetColumns, onFunctionInputChange
         </Card>
     );
 }
+
+    
