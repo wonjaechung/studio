@@ -246,13 +246,20 @@ export function MainApp() {
   };
   
   const handleModalAction = (action: string, data: Record<string, any>) => {
+    const getNextAvailableColumnIndex = () => appState.spreadsheet.columns.length;
+
     const modalActions: Record<string, Function> = {
         closeModal: () => setState(prev => ({ ...prev, modal: null })),
         run1VarStats: () => {
           const { x1list } = data;
           const colData = getColumnData(x1list);
           if (colData.length === 0) return showMessageModal('Selected list is empty.');
-          const results = { 'x̄': stats.mean(colData), 'Σx': stats.sum(colData), 'Σx²': stats.sum(colData.map(x => x * x)), 'Sx': stats.stddev(colData, false), 'σx': stats.stddev(colData, true), n: colData.length, minX: Math.min(...colData), q1: stats.quartile(colData, 0.25), median: stats.median(colData), q3: stats.quartile(colData, 0.75), maxX: Math.max(...colData)};
+          const results = { 'Title': 'One-Var Stats', 'x̄': stats.mean(colData), 'Σx': stats.sum(colData), 'Σx²': stats.sum(colData.map(x => x * x)), 'Sx': stats.stddev(colData, false), 'σx': stats.stddev(colData, true), n: colData.length, minX: Math.min(...colData), q1: stats.quartile(colData, 0.25), median: stats.median(colData), q3: stats.quartile(colData, 0.75), maxX: Math.max(...colData)};
+          
+          const resultColIndex = getNextAvailableColumnIndex();
+          addDataColumn(String.fromCharCode(65 + resultColIndex), Object.keys(results).map(k => `${k}:`));
+          addDataColumn(String.fromCharCode(65 + resultColIndex + 1), Object.values(results).map(v => typeof v === 'number' ? v.toFixed(4) : v), `=OneVar(${x1list})`);
+          
           addHistoryEntry({ type: '1VarStats', input: `1-Var Stats for ${x1list}`, output: `Mean: ${results.x̄.toFixed(4)}, Sx: ${results.Sx.toFixed(4)}`, data: { results, listName: x1list }}, true);
         },
         runLinReg: () => {
@@ -260,7 +267,16 @@ export function MainApp() {
           const xData = getColumnData(xlist);
           const yData = getColumnData(ylist);
           if (xData.length < 2 || xData.length !== yData.length) return showMessageModal("X and Y lists must have the same number of data points (at least 2).");
+          
           const { a, b, r } = stats.linReg(xData, yData);
+          const residuals = xData.map((x, i) => yData[i] - (a + b * x));
+          const results = { 'Title': 'LinReg(a+bx)', 'RegEqn': 'a+bx', 'a': a, 'b': b, 'r²': r*r, 'r': r };
+          
+          const resultColIndex = getNextAvailableColumnIndex();
+          addDataColumn(String.fromCharCode(65 + resultColIndex), Object.keys(results).map(k => `${k}:`));
+          addDataColumn(String.fromCharCode(65 + resultColIndex + 1), Object.values(results).map(v => typeof v === 'number' ? v.toFixed(4) : v), `=LinReg(${xlist},${ylist})`);
+          addDataColumn('statresid', residuals.map(res => res.toFixed(4)));
+
           addHistoryEntry({ type: 'LinReg', input: `LinReg for ${ylist} vs ${xlist}`, output: `y = ${a.toFixed(4)} + ${b.toFixed(4)}x\nr² = ${(r*r).toFixed(4)}`, data: { y: ylist, x: xlist, a, b, r, r2: r*r } }, true);
         },
         runTIntervalFromData: () => {

@@ -55,7 +55,7 @@ const DataFrameViewer = ({ columns }: { columns: SpreadsheetColumn[] }) => {
     const namedCols = columns.filter(c => c.name);
     if(namedCols.length === 0) return <div className="flex items-center justify-center h-full text-muted-foreground">No named columns to display.</div>;
 
-    const rowCount = Math.min(5, namedCols[0]?.data.length || 0);
+    const rowCount = Math.min(5, namedCols.reduce((max, col) => Math.max(max, col.data.length), 0));
     const rows = Array.from({ length: rowCount }, (_, i) => i);
 
     return (
@@ -115,7 +115,7 @@ const PlotContextMenu = ({ colIndices, columns, onPlot, onCancel }: { colIndices
 
 export function GraphingPanel({ state, spreadsheetColumns, onFunctionInputChange, onPlotFunction, setGraphingState, showMessageModal }: GraphingPanelProps) {
     const [isDragOver, setIsDragOver] = useState(false);
-    const chartDivRef = useRef<HTMLDivElement>(null);
+    const chartRef = useRef<any>(null); // Use to store Plotly instance ref
 
     const getColumnData = (name: string): number[] => {
         const col = spreadsheetColumns.find(c => c.name === name);
@@ -128,32 +128,37 @@ export function GraphingPanel({ state, spreadsheetColumns, onFunctionInputChange
 
         let plotView: PlotView = { type: 'default' };
 
-        if (type === 'histogram' && colIndices.length === 1) {
-            const col = spreadsheetColumns[colIndices[0]];
-            const data = getColumnData(col.name);
-            plotView = { type: 'plot', data: [{ x: data, type: 'histogram', marker: { color: 'hsl(var(--accent))' } }], layout: { title: `Histogram of ${col.name}` } };
-        } else if (type === 'boxplot' && colIndices.length === 1) {
-            const col = spreadsheetColumns[colIndices[0]];
-            const data = getColumnData(col.name);
-            plotView = { type: 'plot', data: [{ y: data, type: 'box', name: col.name, marker: { color: 'hsl(var(--primary))' } }], layout: { title: `Box Plot of ${col.name}` } };
-        } else if (type === 'scatter' && colIndices.length === 2) {
-            const col1 = spreadsheetColumns[colIndices[0]];
-            const col2 = spreadsheetColumns[colIndices[1]];
-            const xData = getColumnData(col1.name);
-            const yData = getColumnData(col2.name);
-            const n = Math.min(xData.length, yData.length);
-            if (n < 2) {
-                showMessageModal("Need at least 2 data points for a scatter plot.");
-                setGraphingState({ currentView: { type: 'default' }});
-                return;
+        try {
+            if (type === 'histogram' && colIndices.length === 1) {
+                const col = spreadsheetColumns[colIndices[0]];
+                const data = getColumnData(col.name);
+                plotView = { type: 'plot', data: [{ x: data, type: 'histogram', marker: { color: 'hsl(var(--accent))' } }], layout: { title: `Histogram of ${col.name}` } };
+            } else if (type === 'boxplot' && colIndices.length === 1) {
+                const col = spreadsheetColumns[colIndices[0]];
+                const data = getColumnData(col.name);
+                plotView = { type: 'plot', data: [{ y: data, type: 'box', name: col.name, marker: { color: 'hsl(var(--primary))' } }], layout: { title: `Box Plot of ${col.name}` } };
+            } else if (type === 'scatter' && colIndices.length === 2) {
+                const col1 = spreadsheetColumns[colIndices[0]];
+                const col2 = spreadsheetColumns[colIndices[1]];
+                const xData = getColumnData(col1.name);
+                const yData = getColumnData(col2.name);
+                if (xData.length < 2 || yData.length < 2 || xData.length !== yData.length) {
+                    showMessageModal("For a scatter plot, both columns must have the same number of data points (at least 2).");
+                    setGraphingState({ currentView: { type: 'default' }});
+                    return;
+                }
+                const {a, b, r} = stats.linReg(xData, yData);
+                const xRange = [Math.min(...xData), Math.max(...xData)];
+                const yRange = xRange.map(x => a + b * x);
+                const scatterTrace = { x: xData, y: yData, mode: 'markers', type: 'scatter', marker: { color: '#F59E0B' }, name: 'Data' };
+                const lineTrace = { x: xRange, y: yRange, mode: 'lines', type: 'scatter', line: { color: '#EF4444', width: 2 }, name: 'LSRL' };
+                const layout = { title: `<b>${col1.name} vs. ${col2.name}</b><br>ŷ = ${a.toFixed(3)} + ${b.toFixed(3)}x | r²=${(r*r).toFixed(3)} | r=${r.toFixed(3)}`, xaxis: {title: col1.name }, yaxis: {title: col2.name }};
+                plotView = { type: 'plot', data: [scatterTrace, lineTrace], layout };
             }
-            const {a, b, r} = stats.linReg(xData, yData);
-            const xRange = [Math.min(...xData), Math.max(...xData)];
-            const yRange = xRange.map(x => a + b * x);
-            const scatterTrace = { x: xData, y: yData, mode: 'markers', type: 'scatter', marker: { color: '#F59E0B' } };
-            const lineTrace = { x: xRange, y: yRange, mode: 'lines', type: 'scatter', line: { color: '#EF4444', width: 2 } };
-            const layout = { title: `<b>${col1.name} vs. ${col2.name}</b><br>ŷ = ${a.toFixed(3)} + ${b.toFixed(3)}x | r²=${(r*r).toFixed(3)} | r=${r.toFixed(3)}`, xaxis: {title: col1.name }, yaxis: {title: col2.name }};
-            plotView = { type: 'plot', data: [scatterTrace, lineTrace], layout };
+        } catch (error) {
+            console.error("Plotting error:", error);
+            showMessageModal("An error occurred while trying to create the plot.");
+            plotView = { type: 'default' };
         }
         setGraphingState({ currentView: plotView });
     };
@@ -162,82 +167,54 @@ export function GraphingPanel({ state, spreadsheetColumns, onFunctionInputChange
         e.preventDefault();
         setIsDragOver(false);
         try {
-            const colIndices = JSON.parse(e.dataTransfer.getData('application/json')) as number[];
-            if (colIndices.length > 0 && colIndices.length <= 2) {
-                setGraphingState({ currentView: { type: 'context-menu', colIndices } });
+            const colIndicesStr = e.dataTransfer.getData('application/json');
+            if (!colIndicesStr) return;
+            const colIndices = JSON.parse(colIndicesStr) as number[];
+            
+            const validCols = colIndices.filter(i => spreadsheetColumns[i] && spreadsheetColumns[i].name);
+            if(validCols.length === 0) {
+                 showMessageModal("Please drag named columns to plot.");
+                 return;
+            }
+
+            if (validCols.length > 0 && validCols.length <= 2) {
+                setGraphingState({ currentView: { type: 'context-menu', colIndices: validCols } });
             } else {
                 showMessageModal("Please drag one or two columns to plot.");
             }
         } catch (error) {
             console.error("Drop failed:", error);
+            showMessageModal("Could not read the data from the dragged column.");
         }
     };
     
     const handleExportDrag = async (e: React.DragEvent) => {
-        if (state.currentView.type !== 'plot' && state.currentView.type !== 'dataframe') {
+        if (state.currentView.type !== 'plot') {
             e.preventDefault();
             return;
         }
 
-        const Plotly = (await import('plotly.js-dist-min')).default;
-        
-        let targetDiv;
-        if (state.currentView.type === 'plot') {
-            targetDiv = chartDivRef.current;
-        } else { // dataframe
-            const tempDiv = document.createElement('div');
-            tempDiv.style.width = '800px';
-            tempDiv.style.height = '600px';
-            document.body.appendChild(tempDiv);
-            
-            const cols = spreadsheetColumns.filter(c => c.name);
-            const header = cols.map(c => c.name);
-            const cells = cols.map(c => c.data);
-
-            const tableTrace = {
-                type: 'table',
-                header: {
-                    values: header,
-                    align: "center",
-                    line: {width: 1, color: 'hsl(var(--border))'},
-                    fill: {color: 'hsl(var(--secondary))'},
-                    font: {family: "Inter", size: 13, color: "white"}
-                },
-                cells: {
-                    values: cells,
-                    align: "center",
-                    line: {color: "hsl(var(--border))", width: 1},
-                    fill: {color: 'hsl(var(--card))'},
-                    font: {family: "Inter", size: 12, color: "hsl(var(--foreground))"}
-                }
-            };
-            await Plotly.newPlot(tempDiv, [tableTrace], {paper_bgcolor: 'hsl(var(--background))'});
-            targetDiv = tempDiv;
-        }
-
-        if (!targetDiv) {
+        const plotDiv = chartRef.current?.el;
+        if (!plotDiv) {
             e.preventDefault();
             return;
         }
 
         try {
-            const dataUrl = await Plotly.toImage(targetDiv, { format: 'png', width: 800, height: 600 });
+            const Plotly = (await import('plotly.js-dist-min')).default;
+            const dataUrl = await Plotly.toImage(plotDiv, { format: 'png', width: 800, height: 600 });
             e.dataTransfer.setData('DownloadURL', `image/png:insightflow_view.png:${dataUrl}`);
         } catch (error) {
             console.error("Failed to generate image for export", error);
             e.preventDefault();
-        } finally {
-            if(targetDiv.parentElement === document.body) {
-                document.body.removeChild(targetDiv);
-            }
         }
     };
 
 
     return (
         <Card 
-            className="h-full flex flex-col"
-            onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); e.dataTransfer.dropEffect = 'copy'; }}
+            className={cn("h-full flex flex-col", isDragOver && "border-2 border-dashed border-primary bg-primary/10")}
+            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; setIsDragOver(true); }}
             onDragLeave={() => setIsDragOver(false)}
             onDrop={handleDrop}
         >
@@ -245,7 +222,7 @@ export function GraphingPanel({ state, spreadsheetColumns, onFunctionInputChange
                 <CardTitle className="text-base">Viewer</CardTitle>
                 <ExportToggle onDragStart={handleExportDrag} />
             </CardHeader>
-            <CardContent className={cn("flex-grow flex flex-col gap-4 min-h-0 p-4 pt-2 transition-all", isDragOver && "border-2 border-dashed border-primary bg-primary/10")}>
+            <CardContent className="flex-grow flex flex-col gap-4 min-h-0 p-4 pt-2 transition-all">
                 <div className="flex gap-2">
                     <span className="self-center font-code">f(x) =</span>
                     <Input
@@ -258,14 +235,18 @@ export function GraphingPanel({ state, spreadsheetColumns, onFunctionInputChange
                     />
                     <Button onClick={onPlotFunction}>Plot</Button>
                 </div>
-                <div className="flex-grow relative min-h-0" ref={chartDivRef}>
+                <div className="flex-grow relative min-h-0">
                     {state.currentView.type === 'default' && (
                         <div className="flex items-center justify-center h-full text-muted-foreground">
                             Drop columns here to plot data
                         </div>
                     )}
                     {state.currentView.type === 'plot' && (
-                        <PlotlyChart data={state.currentView.data} layout={state.currentView.layout} />
+                        <PlotlyChart 
+                            data={state.currentView.data} 
+                            layout={state.currentView.layout} 
+                            ref={chartRef}
+                        />
                     )}
                     {state.currentView.type === 'dataframe' && (
                         <DataFrameViewer columns={spreadsheetColumns} />
@@ -283,5 +264,3 @@ export function GraphingPanel({ state, spreadsheetColumns, onFunctionInputChange
         </Card>
     );
 }
-
-    

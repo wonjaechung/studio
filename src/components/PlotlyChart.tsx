@@ -1,6 +1,7 @@
+
 "use client";
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 import type Plotly from 'plotly.js-dist-min';
 
 interface PlotlyChartProps {
@@ -24,9 +25,15 @@ const baseLayout: Partial<Plotly.Layout> = {
     showlegend: false,
 };
 
-export function PlotlyChart({ data, layout }: PlotlyChartProps) {
+const PlotlyChart = forwardRef<any, PlotlyChartProps>(({ data, layout }, ref) => {
   const chartDiv = useRef<HTMLDivElement>(null);
   const PlotlyRef = useRef<typeof Plotly | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    get el() {
+      return chartDiv.current;
+    }
+  }));
 
   useEffect(() => {
     import('plotly.js-dist-min').then(PlotlyModule => {
@@ -50,4 +57,8 @@ export function PlotlyChart({ data, layout }: PlotlyChartProps) {
   }, []);
 
   return <div ref={chartDiv} className="w-full h-full" />;
-}
+});
+
+PlotlyChart.displayName = 'PlotlyChart';
+
+export default PlotlyChart;
