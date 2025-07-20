@@ -30,7 +30,7 @@ export async function generateExplanation(input: GenerateExplanationInput): Prom
 const generateExplanationPrompt = ai.definePrompt({
   name: 'generateExplanationPrompt',
   input: {schema: GenerateExplanationInputSchema},
-  output: {schema: GenerateExplanationOutputSchema},
+  output: {schema: GenerateExplanationOutputSchema.nullable()},
   prompt: `You are an expert statistics tutor. Given a calculator input, output, type and any associated data, explain what the calculation does in plain English.
 
 Here are some examples:
