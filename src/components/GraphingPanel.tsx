@@ -170,7 +170,7 @@ export default function GraphingPanel({
         <CardHeader>
           <CardTitle className="text-base">Viewer</CardTitle>
         </CardHeader>
-        <CardContent className="flex-grow p-2 pt-0 relative">
+        <CardContent className="flex-grow p-2 pt-0 relative flex flex-col">
           {graphingState.pendingPlot && (
               <div className="absolute inset-0 z-20 bg-card/80 backdrop-blur-sm flex items-center justify-center">
                   <div className="bg-background border p-6 rounded-lg shadow-lg text-center">
@@ -196,7 +196,9 @@ export default function GraphingPanel({
                   </div>
               </div>
           )}
-          {renderPlot()}
+          <div className="flex-grow min-h-0">
+             {renderPlot()}
+          </div>
         </CardContent>
       </Card>
     </div>
