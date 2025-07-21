@@ -16,7 +16,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { stats } from '@/lib/stats';
 import { Skeleton } from '../ui/skeleton';
 
-const PlotlyChart = dynamic(() => import('@/components/PlotlyChart').then(mod => mod.PlotlyChart), {
+const PlotlyChart = dynamic(() => import('@/components/PlotlyChart'), {
   ssr: false,
   loading: () => <Skeleton className="w-full h-full" />
 });
@@ -150,8 +150,8 @@ export function GraphingPanel({ state, spreadsheetColumns, onFunctionInputChange
                 const {a, b, r} = stats.linReg(xData, yData);
                 const xRange = [Math.min(...xData), Math.max(...xData)];
                 const yRange = xRange.map(x => a + b * x);
-                const scatterTrace = { x: xData, y: yData, mode: 'markers', type: 'scatter', marker: { color: '#F59E0B' }, name: 'Data' };
-                const lineTrace = { x: xRange, y: yRange, mode: 'lines', type: 'scatter', line: { color: '#EF4444', width: 2 }, name: 'LSRL' };
+                const scatterTrace = { x: xData, y: yData, mode: 'markers', type: 'scatter', marker: { color: 'hsl(var(--primary))' }, name: 'Data' };
+                const lineTrace = { x: xRange, y: yRange, mode: 'lines', type: 'scatter', line: { color: 'hsl(var(--accent))', width: 2 }, name: 'LSRL' };
                 const layout = { title: `<b>${col1.name} vs. ${col2.name}</b><br>ŷ = ${a.toFixed(3)} + ${b.toFixed(3)}x | r²=${(r*r).toFixed(3)} | r=${r.toFixed(3)}`, xaxis: {title: col1.name }, yaxis: {title: col2.name }, showlegend: true};
                 plotView = { type: 'plot', data: [scatterTrace, lineTrace], layout };
             }
@@ -265,3 +265,5 @@ export function GraphingPanel({ state, spreadsheetColumns, onFunctionInputChange
         </Card>
     );
 }
+
+  

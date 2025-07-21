@@ -16,7 +16,6 @@ interface SpreadsheetPanelProps {
   setState: (update: Partial<SpreadsheetState> | ((prevState: SpreadsheetState) => Partial<SpreadsheetState>)) => void;
   onMenuClick: () => void;
   onClearClick: () => void;
-  showMessageModal: (message: string) => void;
 }
 
 const ExportToggle = ({ onDragStart, disabled }: { onDragStart: (e: React.DragEvent) => void, disabled: boolean }) => {
@@ -39,7 +38,7 @@ const ExportToggle = ({ onDragStart, disabled }: { onDragStart: (e: React.DragEv
     );
 };
 
-export function SpreadsheetPanel({ state, setState, onMenuClick, onClearClick, showMessageModal }: SpreadsheetPanelProps) {
+export function SpreadsheetPanel({ state, setState, onMenuClick, onClearClick }: SpreadsheetPanelProps) {
   const { columns, activeCell, isEditing, editValue, selectionStart, selectionEnd } = state;
   const numCols = Math.max(columns.length + 5, 26);
   const numRows = 200;
@@ -138,18 +137,6 @@ export function SpreadsheetPanel({ state, setState, onMenuClick, onClearClick, s
         }
     }
     
-    if (colIndices.length === 0) {
-        showMessageModal("Please select named columns to drag.");
-        e.preventDefault();
-        return;
-    }
-
-    if (colIndices.length > 2) {
-        showMessageModal("You can only drag up to two columns at a time.");
-        e.preventDefault();
-        return;
-    }
-    
     e.dataTransfer.setData('application/json', JSON.stringify(colIndices));
     e.dataTransfer.effectAllowed = 'copy';
     e.currentTarget.classList.add('opacity-50', 'bg-primary');
@@ -175,7 +162,7 @@ export function SpreadsheetPanel({ state, setState, onMenuClick, onClearClick, s
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="flex-row items-center justify-between py-3">
-        <CardTitle className="text-base">Lists & Spreadsheet</CardTitle>
+        <CardTitle className="text-base">Lists &amp; Spreadsheet</CardTitle>
         <div className="flex items-center gap-4">
           <ExportToggle onDragStart={handleExportDrag} disabled={!columns.some(c => c.name)} />
           <div>
@@ -262,3 +249,5 @@ export function SpreadsheetPanel({ state, setState, onMenuClick, onClearClick, s
     </Card>
   );
 }
+
+  

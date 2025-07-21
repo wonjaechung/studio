@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import type { AppState, ModalConfig, Question, SpreadsheetColumn } from '@/lib/types';
+import type { AppState, ModalConfig, SpreadsheetColumn, Question } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { generateExplanation } from '@/ai/flows/generate-explanation';
 import { statsQuestions } from '@/lib/questions';
@@ -299,8 +299,8 @@ export function MainApp() {
             const df = n - 1;
             const tStat = (mean - mu0) / (sx / Math.sqrt(n));
             let pVal;
-            if (alt === 'μ < μ₀') pVal = stats.tCdf(tStat, df);
-            else if (alt === 'μ > μ₀') pVal = 1 - stats.tCdf(tStat, df);
+            if (alt === 'μ &lt; μ₀') pVal = stats.tCdf(tStat, df);
+            else if (alt === 'μ &gt; μ₀') pVal = 1 - stats.tCdf(tStat, df);
             else pVal = 2 * (1 - stats.tCdf(Math.abs(tStat), df));
             addHistoryEntry({ type: 'tTest', input: `t-Test: μ ${alt.replace('μ', '')} ${mu0}`, output: `t=${tStat.toFixed(4)}, p=${pVal.toFixed(4)}`, data: { mu0, mean, sx, n, alt, df, tStat, pVal } }, true);
         },
@@ -326,8 +326,8 @@ export function MainApp() {
             const se = Math.sqrt(pPooled * (1 - pPooled) * (1 / nn1 + 1 / nn2));
             const zStat = (p1 - p2) / se;
             let pVal;
-            if (alt === '< p2') pVal = stats.normalCdf(-Infinity, zStat, 0, 1);
-            else if (alt === '> p2') pVal = 1 - stats.normalCdf(-Infinity, zStat, 0, 1);
+            if (alt === '&lt; p2') pVal = stats.normalCdf(-Infinity, zStat, 0, 1);
+            else if (alt === '&gt; p2') pVal = 1 - stats.normalCdf(-Infinity, zStat, 0, 1);
             else pVal = 2 * (1 - stats.normalCdf(-Infinity, Math.abs(zStat), 0, 1));
             addHistoryEntry({ type: '2PropZTest', input: `2-Prop Z-Test`, output: `z=${zStat.toFixed(4)}, p=${pVal.toFixed(4)}`, data: { x1: nx1, n1: nn1, x2: nx2, n2: nn2, alt, p1, p2, pPooled, zStat, pVal } }, true);
         },
@@ -515,3 +515,5 @@ export function MainApp() {
     </main>
   );
 }
+
+  
