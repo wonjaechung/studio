@@ -164,18 +164,18 @@ export default function Home() {
     function showMessageModal(message: any) { renderModal({ title: 'Info', fields: [{ type: 'static', label: message }], buttons: [ { label: 'OK', action: 'closeModal', class:'btn-primary' } ], requiresData: false }); }
 
     // --- GRAPHING LOGIC ---
-    const plotlyLayout = { paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: 'var(--foreground)', size: 14 }, xaxis: { gridcolor: 'var(--secondary)', zerolinecolor: 'var(--muted)' }, yaxis: { gridcolor: 'var(--secondary)', zerolinecolor: 'var(--muted)' }, margin: { l: 60, r: 40, b: 50, t: 80 }, showlegend: false };
-    function plotDefault() { if(graphPlotDiv) graphPlotDiv.innerHTML = `<div class="flex items-center justify-center h-full text-text-muted">Drop columns here to plot data</div>`; }
-    function plotHistogram(colIndex: any) { const col = appState.spreadsheet.columns[colIndex]; const data = getColumnData(col.name); const trace = { x: data, type: 'histogram', marker: { color: 'var(--primary)' } }; const layout = { ...plotlyLayout, title: `Histogram of ${col.name}`, yaxis: { ...plotlyLayout.yaxis, title: 'Frequency'}}; (window as any).Plotly.newPlot(graphPlotDiv, [trace], layout, {responsive: true}); }
-    function plotBoxPlot(colIndex: any) { const col = appState.spreadsheet.columns[colIndex]; const data = getColumnData(col.name); if(data.length === 0) { showMessageModal("Cannot create box plot. The selected column has no numerical data."); return; } const fiveNumSum = { min: Math.min(...data), q1: stats.quartile(data, 0.25), med: stats.median(data), q3: stats.quartile(data, 0.75), max: Math.max(...data) }; const trace = { y: data, type: 'box', marker: { color: 'var(--primary)' }, name: col.name, boxpoints: 'all', jitter: 0.3, pointpos: -1.8 }; const layout = { ...plotlyLayout, title: `<b>Box Plot of ${col.name}</b><br><span style="font-size:12px">Min: ${fiveNumSum.min}, Q1: ${fiveNumSum.q1}, Med: ${fiveNumSum.med}, Q3: ${fiveNumSum.q3}, Max: ${fiveNumSum.max}</span>` }; (window as any).Plotly.newPlot(graphPlotDiv, [trace], layout, {responsive: true}); }
+    const plotlyLayout = { paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: 'hsl(var(--foreground))', size: 12, family: 'Inter, sans-serif' }, title: { font: { size: 16 } }, xaxis: { gridcolor: 'hsl(var(--border))', zerolinecolor: 'hsl(var(--muted))', titlefont: { size: 14 } }, yaxis: { gridcolor: 'hsl(var(--border))', zerolinecolor: 'hsl(var(--muted))', titlefont: { size: 14 } }, margin: { l: 60, r: 40, b: 50, t: 80 }, showlegend: false };
+    function plotDefault() { if(graphPlotDiv) graphPlotDiv.innerHTML = `<div class="flex items-center justify-center h-full text-muted-foreground">Drop columns here to plot data</div>`; }
+    function plotHistogram(colIndex: any) { const col = appState.spreadsheet.columns[colIndex]; const data = getColumnData(col.name); const trace = { x: data, type: 'histogram', marker: { color: 'hsl(var(--primary))' } }; const layout = { ...plotlyLayout, title: `Histogram of ${col.name}`, yaxis: { ...plotlyLayout.yaxis, title: 'Frequency'}}; (window as any).Plotly.newPlot(graphPlotDiv, [trace], layout, {responsive: true}); }
+    function plotBoxPlot(colIndex: any) { const col = appState.spreadsheet.columns[colIndex]; const data = getColumnData(col.name); if(data.length === 0) { showMessageModal("Cannot create box plot. The selected column has no numerical data."); return; } const fiveNumSum = { min: Math.min(...data), q1: stats.quartile(data, 0.25), med: stats.median(data), q3: stats.quartile(data, 0.75), max: Math.max(...data) }; const trace = { y: data, type: 'box', marker: { color: 'hsl(var(--primary))' }, name: col.name, boxpoints: false }; const layout = { ...plotlyLayout, title: `<b>Box Plot of ${col.name}</b><br><span style="font-size:12px">Min: ${fiveNumSum.min}, Q1: ${fiveNumSum.q1}, Med: ${fiveNumSum.med}, Q3: ${fiveNumSum.q3}, Max: ${fiveNumSum.max}</span>` }; (window as any).Plotly.newPlot(graphPlotDiv, [trace], layout, {responsive: true}); }
     function plotScatter(colIndex1: any, colIndex2: any) {
         const col1 = appState.spreadsheet.columns[colIndex1]; const col2 = appState.spreadsheet.columns[colIndex2];
         const xData = getColumnData(col1.name); const yData = getColumnData(col2.name);
         if (xData.length < 2 || yData.length < 2 || xData.length !== yData.length) { showMessageModal("Cannot create scatter plot. X and Y lists must have the same number of numerical data points (at least 2)."); return; }
         const n = xData.length; const sumX = stats.sum(xData); const sumY = stats.sum(yData); const sumXY = stats.sum(xData.map((x: number, i: number) => x * yData[i])); const sumX2 = stats.sum(xData.map((x: number) => x * x)); const b = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX); const a = (sumY / n) - b * (sumX / n); const rNumerator = (n * sumXY - sumX * sumY); const rDenominator = Math.sqrt((n * sumX2 - sumX * sumX) * (n * stats.sum(yData.map((y: number) => y * y)) - sumY * sumY)); const r = rDenominator === 0 ? 0 : rNumerator / rDenominator;
         const xRange = [Math.min(...xData), Math.max(...xData)]; const yRange = xRange.map(x => a + b * x);
-        const scatterTrace = { x: xData, y: yData, mode: 'markers', type: 'scatter', name: 'Data', marker: { color: '#F59E0B' } };
-        const lineTrace = { x: xRange, y: yRange, mode: 'lines', type: 'scatter', name: 'Fit', line: { color: '#EF4444' } };
+        const scatterTrace = { x: xData, y: yData, mode: 'markers', type: 'scatter', name: 'Data', marker: { color: 'hsl(var(--primary))', size: 8 } };
+        const lineTrace = { x: xRange, y: yRange, mode: 'lines', type: 'scatter', name: 'Fit', line: { color: 'hsl(var(--destructive))', width: 2 } };
         const layout = { ...plotlyLayout, title: `<b>${col1.name} vs. ${col2.name}</b><br><span style="font-size:12px">ŷ = ${a.toFixed(3)} + ${b.toFixed(3)}x | r²=${(r*r).toFixed(3)}</span>`, xaxis: {...plotlyLayout.xaxis, title: col1.name }, yaxis: {...plotlyLayout.yaxis, title: col2.name }};
         (window as any).Plotly.newPlot(graphPlotDiv, [scatterTrace, lineTrace], layout, {responsive: true});
     }
@@ -351,11 +351,11 @@ export default function Home() {
                     <label htmlFor="importer-sql">SQL</label>
                 </div>
                 <div id="python-instructions">
-                    <p className="text-sm mb-2 text-gray-400">Copy and run this command in the console below:</p>
+                    <p className="text-sm mb-2 text-muted-foreground">Copy and run this command in the console below:</p>
                     <code className="code-block" onClick={(e) => (window as any).copyCode(e.target)}>df = pd.read_csv('lab_data_1.csv')</code>
                 </div>
                 <div id="sql-instructions" className="hidden">
-                    <p className="text-sm mb-2 text-gray-400">Copy and run this query in the console below:</p>
+                    <p className="text-sm mb-2 text-muted-foreground">Copy and run this query in the console below:</p>
                     <code className="code-block" onClick={(e) => (window as any).copyCode(e.target)}>SELECT study_hours, exam_score FROM student_performance;</code>
                 </div>
             </div>
@@ -384,7 +384,7 @@ export default function Home() {
                 <h2 className="panel-title">Viewer</h2>
             </div>
             <div id="graphing-content" className="panel-content !p-2 flex flex-col">
-                <div id="graph-plot" className="flex-grow flex items-center justify-center text-text-muted">Drop columns here to plot data</div>
+                <div id="graph-plot" className="flex-grow flex items-center justify-center text-muted-foreground">Drop columns here to plot data</div>
                 <div id="graph-context-menu" className="hidden"></div>
             </div>
         </div>
@@ -402,29 +402,59 @@ export default function Home() {
       </div>
        <style jsx global>{`
         :root {
-            --background: #23272d;
-            --card: #2C3E50; /* Midnight Blue */
-            --popover: #2C3E50;
-            --primary: #5DADE2; /* Sky Blue */
-            --secondary: #34495E; /* Dark Slate Gray */
-            --muted: #34495E;
-            --accent: #5DADE2;
-            --border: #34495E;
-            --input: #34495E;
-            --ring: #5DADE2;
-            --foreground: #ecf0f1;
-            --text-muted: #95a5a6;
+            --background: 210 40% 98%;
+            --foreground: 222.2 84% 4.9%;
+            --card: 0 0% 100%;
+            --card-foreground: 222.2 84% 4.9%;
+            --popover: 0 0% 100%;
+            --popover-foreground: 222.2 84% 4.9%;
+            --primary: 221.2 83.2% 53.3%;
+            --primary-foreground: 210 40% 98%;
+            --secondary: 210 40% 96.1%;
+            --secondary-foreground: 222.2 47.4% 11.2%;
+            --muted: 210 40% 96.1%;
+            --muted-foreground: 215.4 16.3% 46.9%;
+            --accent: 210 40% 96.1%;
+            --accent-foreground: 222.2 47.4% 11.2%;
+            --destructive: 0 84.2% 60.2%;
+            --destructive-foreground: 210 40% 98%;
+            --border: 214.3 31.8% 91.4%;
+            --input: 214.3 31.8% 91.4%;
+            --ring: 222.2 84% 4.9%;
+            --radius: 0.5rem;
         }
+        .dark {
+            --background: 222.2 84% 4.9%;
+            --foreground: 210 40% 98%;
+            --card: 222.2 84% 4.9%;
+            --card-foreground: 210 40% 98%;
+            --popover: 222.2 84% 4.9%;
+            --popover-foreground: 210 40% 98%;
+            --primary: 217.2 91.2% 59.8%;
+            --primary-foreground: 222.2 47.4% 11.2%;
+            --secondary: 217.2 32.6% 17.5%;
+            --secondary-foreground: 210 40% 98%;
+            --muted: 217.2 32.6% 17.5%;
+            --muted-foreground: 215 20.2% 65.1%;
+            --accent: 217.2 32.6% 17.5%;
+            --accent-foreground: 210 40% 98%;
+            --destructive: 0 62.8% 30.6%;
+            --destructive-foreground: 210 40% 98%;
+            --border: 217.2 32.6% 17.5%;
+            --input: 217.2 32.6% 17.5%;
+            --ring: 212.7 26.8% 83.9%;
+        }
+        
         body {
             font-family: 'Inter', sans-serif;
-            background-color: var(--background);
-            color: var(--foreground);
+            background-color: hsl(var(--background));
+            color: hsl(var(--foreground));
             overflow: hidden;
         }
         .main-grid {
             display: grid;
             grid-template-columns: 1fr 1.5fr;
-            grid-template-rows: auto minmax(0, 1.5fr) minmax(0, 1fr);
+            grid-template-rows: auto minmax(0, 2fr) minmax(0, 1.5fr);
             gap: 1rem;
             height: 100vh;
             padding: 1rem;
@@ -434,17 +464,20 @@ export default function Home() {
                 "spreadsheet spreadsheet";
         }
         .panel {
-            background-color: var(--card);
+            background-color: hsl(var(--card));
             border-radius: 0.75rem;
-            border: 1px solid var(--border);
+            border: 1px solid hsl(var(--border));
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .dark .panel {
+             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         }
         .panel-header {
             padding: 0.75rem 1rem;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 1px solid hsl(var(--border));
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -461,9 +494,9 @@ export default function Home() {
             position: relative;
         }
          .panel-content::-webkit-scrollbar { width: 8px; }
-        .panel-content::-webkit-scrollbar-track { background: var(--card); }
-        .panel-content::-webkit-scrollbar-thumb { background-color: var(--secondary); border-radius: 4px; }
-        .panel-content::-webkit-scrollbar-thumb:hover { background: #4a637b; }
+        .panel-content::-webkit-scrollbar-track { background: hsl(var(--card)); }
+        .panel-content::-webkit-scrollbar-thumb { background-color: hsl(var(--secondary)); border-radius: 4px; }
+        .panel-content::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
         
         #importer { grid-area: importer; }
         #calculator { grid-area: calculator; }
@@ -475,67 +508,66 @@ export default function Home() {
         #calculator-display { flex-grow: 1; overflow-y: auto; margin-bottom: 0.5rem; }
         .calculator-display { display: flex; flex-direction: column-reverse; }
         .calc-entry { margin-bottom: 1rem; }
-        .calc-input { color: var(--text-muted); word-break: break-all; }
-        .calc-output { text-align: right; font-weight: bold; font-size: 1.125rem; color: var(--foreground); white-space: pre-wrap; word-break: break-all; }
+        .calc-input { color: hsl(var(--muted-foreground)); word-break: break-all; }
+        .calc-output { text-align: right; font-weight: bold; font-size: 1.125rem; color: hsl(var(--foreground)); white-space: pre-wrap; word-break: break-all; }
         .calc-explanation {
-            font-family: 'Inter', sans-serif; font-size: 0.8rem; color: #bdc3c7;
-            background-color: rgba(52, 73, 94, 0.7); padding: 0.5rem; border-radius: 0.375rem;
-            margin-top: 0.5rem; white-space: pre-wrap; border-left: 3px solid var(--primary);
+            font-family: 'Inter', sans-serif; font-size: 0.8rem; color: hsl(var(--muted-foreground));
+            background-color: hsl(var(--accent)); padding: 0.5rem; border-radius: 0.375rem;
+            margin-top: 0.5rem; white-space: pre-wrap; border-left: 3px solid hsl(var(--primary));
         }
-        #game-mode-display { font-family: 'Inter', sans-serif; padding: 0.75rem; background-color: rgba(93, 173, 226, 0.1); border: 1px solid rgba(93, 173, 226, 0.3); border-radius: 0.5rem; margin-bottom: 1rem; }
+        #game-mode-display { font-family: 'Inter', sans-serif; padding: 0.75rem; background-color: hsla(var(--primary), 0.1); border: 1px solid hsla(var(--primary), 0.3); border-radius: 0.5rem; margin-bottom: 1rem; }
 
         /* Spreadsheet Styles */
         #spreadsheet-content { padding: 0; font-family: 'Source Code Pro', monospace; }
         .spreadsheet-container { position: relative; height: 100%; overflow: auto !important; }
         .spreadsheet-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        .spreadsheet-table th, .spreadsheet-table td { border: 1px solid var(--secondary); padding: 4px; text-align: right; min-width: 80px; height: 24px; white-space: nowrap; color: var(--foreground); }
-        .spreadsheet-table th { background-color: var(--secondary); position: sticky; top: 0; z-index: 10; font-weight: 600; }
-        .spreadsheet-table .row-header { background-color: var(--secondary); text-align: center; position: sticky; left: 0; z-index: 5; }
-        .spreadsheet-table td.selected, .spreadsheet-table th.in-selection { background-color: var(--primary); outline: 2px solid white; }
-        .spreadsheet-table th.col-header.in-selection { cursor: grab; }
-        .spreadsheet-table td.in-selection { background-color: rgba(93, 173, 226, 0.5); }
-        .spreadsheet-table input { background: transparent; border: none; color: white; width: 100%; text-align: right; outline: none; font-family: 'Source Code Pro', monospace; }
+        .spreadsheet-table th, .spreadsheet-table td { border: 1px solid hsl(var(--border)); padding: 4px; text-align: right; min-width: 80px; height: 24px; white-space: nowrap; color: hsl(var(--foreground)); }
+        .spreadsheet-table th { background-color: hsl(var(--secondary)); position: sticky; top: 0; z-index: 10; font-weight: 600; }
+        .spreadsheet-table .row-header { background-color: hsl(var(--secondary)); text-align: center; position: sticky; left: 0; z-index: 5; }
+        .spreadsheet-table td.selected { background-color: hsl(var(--primary)); outline: 2px solid hsl(var(--primary-foreground)); color: hsl(var(--primary-foreground)) !important;}
+        .spreadsheet-table th.in-selection { background-color: hsl(var(--primary)); color: hsl(var(--primary-foreground)); cursor: grab; }
+        .spreadsheet-table td.in-selection { background-color: hsla(var(--primary), 0.5); }
+        .spreadsheet-table input { background: transparent; border: none; color: inherit; width: 100%; text-align: right; outline: none; font-family: 'Source Code Pro', monospace; }
 
         /* Graphing Styles */
         #graph-plot { flex-grow: 1; border-radius: 0.5rem; min-height: 0;}
         #graph-context-menu {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background-color: rgba(44, 62, 80, 0.9); backdrop-filter: blur(8px);
-            border-radius: 0.75rem; border: 1px solid var(--border); padding: 1.5rem; z-index: 100;
-            display: flex; flex-direction: column; gap: 1rem; box-shadow: 0 10px 20px rgba(0,0,0,0.3); text-align: center;
+            background-color: hsla(var(--card), 0.9); backdrop-filter: blur(8px);
+            border-radius: 0.75rem; border: 1px solid hsl(var(--border)); padding: 1.5rem; z-index: 100;
+            display: flex; flex-direction: column; gap: 1rem; box-shadow: 0 10px 20px rgba(0,0,0,0.1); text-align: center;
         }
         .context-menu-title { font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem; }
-        .context-menu-subtitle { font-size: 0.875rem; color: var(--text-muted); }
+        .context-menu-subtitle { font-size: 0.875rem; color: hsl(var(--muted-foreground)); }
         .context-menu-options { display: flex; gap: 1rem; margin-top: 1rem; justify-content: center;}
-        #graphing.drag-over { border-color: var(--primary); box-shadow: 0 0 15px 0 rgba(93, 173, 226, 0.5); }
+        #graphing.drag-over { border-color: hsl(var(--primary)); box-shadow: 0 0 15px 0 hsla(var(--primary), 0.5); }
 
         /* General UI */
         .btn {
-            background-color: var(--secondary); color: white; padding: 0.5rem 1rem; border-radius: 0.375rem;
-            font-weight: 500; border: 1px solid #4a637b; cursor: pointer; transition: all 0.2s; white-space: nowrap;
+            display: inline-flex; items-center; justify-content: center;
+            background-color: hsl(var(--secondary)); color: hsl(var(--secondary-foreground)); padding: 0.5rem 1rem; border-radius: 0.375rem;
+            font-weight: 500; border: 1px solid hsl(var(--border)); cursor: pointer; transition: all 0.2s; white-space: nowrap;
         }
-        .btn:hover { background-color: #4a637b; }
-        .btn-primary { background-color: var(--primary); border-color: var(--primary); }
-        .btn-primary:hover { background-color: #5296c7; }
+        .btn:hover { background-color: hsl(var(--accent)); }
+        .btn-primary { background-color: hsl(var(--primary)); color: hsl(var(--primary-foreground)); border-color: hsl(var(--primary)); }
+        .btn-primary:hover { background-color: hsla(var(--primary), 0.9); }
         .hidden { display: none !important; }
         .modal-backdrop { position: fixed; inset: 0; background-color: rgba(0,0,0,0.6); z-index: 999; }
-        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #2c3e50; color: #ecf0f1; border: 1px solid #34495e; box-shadow: 0 10px 25px rgba(0,0,0,0.5); font-size: 14px; z-index: 1000; padding: 1.25rem; border-radius: 0.5rem; font-family: 'Inter', sans-serif; width: 90%; max-width: 420px; }
-        .modal-title { font-weight: 700; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid #34495e; font-size: 1.125rem; }
+        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: hsl(var(--card)); color: hsl(var(--foreground)); border: 1px solid hsl(var(--border)); box-shadow: 0 10px 25px rgba(0,0,0,0.1); font-size: 14px; z-index: 1000; padding: 1.25rem; border-radius: 0.5rem; font-family: 'Inter', sans-serif; width: 90%; max-width: 420px; }
+        .modal-title { font-weight: 700; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid hsl(var(--border)); font-size: 1.125rem; }
         .modal-field { display: grid; grid-template-columns: 1fr 2fr; align-items: center; margin-bottom: 0.75rem; gap: 1rem; }
         .modal-field label { font-weight: 500; text-align: right; }
-        .modal-field select, .modal-field input { background-color: #34495e; border: 1px solid #95a5a6; border-radius: 4px; padding: 4px 8px; color: #ecf0f1; width: 100%; }
+        .modal-field select, .modal-field input { background-color: hsl(var(--background)); border: 1px solid hsl(var(--border)); border-radius: 4px; padding: 4px 8px; color: hsl(var(--foreground)); width: 100%; }
         .modal-buttons { margin-top: 1.25rem; text-align: right; display: flex; gap: 0.5rem; justify-content: flex-end; }
-        .importer-toggle { display: flex; background-color: var(--background); border-radius: 0.5rem; padding: 0.25rem; margin-bottom: 1rem; }
+        .importer-toggle { display: flex; background-color: hsl(var(--secondary)); border-radius: 0.5rem; padding: 0.25rem; margin-bottom: 1rem; }
         .importer-toggle label { flex: 1; text-align: center; padding: 0.25rem 0.5rem; border-radius: 0.375rem; cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif; font-size: 0.875rem;}
         .importer-toggle input { display: none; }
-        .importer-toggle input:checked + label { background-color: var(--primary); color: var(--background); font-weight: 600; }
-        .code-block { background-color: #000; padding: 0.75rem; border-radius: 0.5rem; color: #A5B4FC; font-family: 'Source Code Pro', monospace; }
-        .dataframe-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; font-family: 'Inter', sans-serif; background-color: #34495E; border-radius: 0.5rem; overflow: hidden; }
-        .dataframe-table th, .dataframe-table td { border: 1px solid var(--border); padding: 0.5rem; text-align: left; }
-        .dataframe-table th { background-color: var(--secondary); font-weight: 600; }
+        .importer-toggle input:checked + label { background-color: hsl(var(--primary)); color: hsl(var(--primary-foreground)); font-weight: 600; }
+        .code-block { background-color: hsl(var(--secondary)); padding: 0.75rem; border-radius: 0.5rem; color: hsl(var(--foreground)); font-family: 'Source Code Pro', monospace; }
+        .dataframe-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; font-family: 'Inter', sans-serif; background-color: hsl(var(--secondary)); border-radius: 0.5rem; overflow: hidden; }
+        .dataframe-table th, .dataframe-table td { border: 1px solid hsl(var(--border)); padding: 0.5rem; text-align: left; }
+        .dataframe-table th { background-color: hsl(var(--muted)); font-weight: 600; }
        `}</style>
     </>
   );
 }
-
-    
