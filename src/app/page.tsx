@@ -5,6 +5,11 @@ import React, { useEffect } from 'react';
 
 export default function Home() {
   useEffect(() => {
+    // This is a workaround to avoid hydration errors with Next.js App Router.
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     // --- DOM ELEMENT REFERENCES ---
     const calculatorPanel = document.getElementById('calculator');
     const calculatorDisplay = document.getElementById('calculator-display');
@@ -244,7 +249,7 @@ export default function Home() {
         document.body.insertAdjacentHTML('beforeend', modalHTML);
         appState.modal = document.getElementById('stats-menu');
     }
-    function handleAction(event: any) { const target = event.target.closest('[data-action]'); if (target) { const actionName = target.dataset.action; if (actionName && actions[actionName]) { actions[actionName](); } } }
+    function handleAction(event: any) { const target = event.target.closest('[data-action]'); if (target) { const actionName = target.dataset.action; if (actionName && actions[actionName]) { actions[actionName](event); } } }
     function handleEditKey(event: any, value: any) { if (event.key === 'Enter') { event.preventDefault(); finishEditing(value, true); } else if (event.key === 'Escape') { appState.spreadsheet.isEditing = false; renderSpreadsheet(); } }
     (window as any).handleEditKey = handleEditKey;
 
@@ -313,7 +318,7 @@ export default function Home() {
         calculatorInput!.addEventListener('keydown', (e) => { if(e.key === 'Enter') handleCalculatorInput(); });
         calculatorEnterBtn!.addEventListener('click', handleCalculatorInput);
         gameModeBtn!.addEventListener('click', toggleGameMode);
-        spreadsheetContainer!.addEventListener('dragstart', (e: DragEvent) => { if (!(e.target as HTMLElement).matches('th.col-header.in-selection')) { e.preventDefault(); return; } const { selectionStart, selectionEnd } = appState.spreadsheet; const minCol = Math.min(selectionStart.col, selectionEnd.col); const maxCol = Math.max(selectionEnd.col, selectionStart.col); let colIndices: number[] = []; for (let i = minCol; i <= maxCol; i++) { if(appState.spreadsheet.columns[i]?.name) colIndices.push(i); } if (colIndices.length === 0 || colIndices.length > 2) { showMessageModal("Drag one or two NAMED columns to plot."); e.preventDefault(); return; } e.dataTransfer!.setData('application/json', JSON.stringify(colIndices)); e.dataTransfer!.effectAllowed = 'copy'; });
+        spreadsheetContainer!.addEventListener('dragstart', (e: DragEvent) => { if (!(e.target as HTMLElement).matches('th.col-header.in-selection')) { e.preventDefault(); return; } const { selectionStart, selectionEnd } = appState.spreadsheet; const minCol = Math.min(selectionStart!.col, selectionEnd!.col); const maxCol = Math.max(selectionEnd!.col, selectionStart!.col); let colIndices: number[] = []; for (let i = minCol; i <= maxCol; i++) { if(appState.spreadsheet.columns[i]?.name) colIndices.push(i); } if (colIndices.length === 0 || colIndices.length > 2) { showMessageModal("Drag one or two NAMED columns to plot."); e.preventDefault(); return; } e.dataTransfer!.setData('application/json', JSON.stringify(colIndices)); e.dataTransfer!.effectAllowed = 'copy'; });
         graphingPanel!.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer!.dropEffect = 'copy'; graphingPanel!.classList.add('drag-over'); });
         graphingPanel!.addEventListener('dragleave', () => { graphingPanel!.classList.remove('drag-over'); });
         graphingPanel!.addEventListener('drop', (e: DragEvent) => { e.preventDefault(); graphingPanel!.classList.remove('drag-over'); const colIndices = JSON.parse(e.dataTransfer!.getData('application/json')); showPlotTypeMenu(colIndices); });
