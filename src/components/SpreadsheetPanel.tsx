@@ -4,6 +4,7 @@
 import React, { useRef, useEffect } from 'react';
 import type { SpreadsheetState, Cell } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface SpreadsheetPanelProps {
   spreadsheetState: SpreadsheetState;
@@ -28,24 +29,20 @@ export default function SpreadsheetPanel({
     selectionEnd,
   } = spreadsheetState;
 
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleMouseUp = () => {
-      setSpreadsheetState({ isSelecting: false });
-    };
-
-    const container = containerRef.current;
-    if (container) {
-      document.addEventListener('mouseup', handleMouseUp);
+  const getCellFromEvent = (e: React.MouseEvent): Cell | { col: null; row: null } => {
+    const target = e.target as HTMLElement;
+    const cell = target.closest('[data-col][data-row]');
+    if (cell) {
+      const colStr = cell.getAttribute('data-col');
+      const rowStr = cell.getAttribute('data-row');
+      if (colStr && rowStr) {
+        return { col: parseInt(colStr, 10), row: parseInt(rowStr, 10) };
+      }
     }
-    
-    return () => {
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [setSpreadsheetState]);
+    return { col: null, row: null };
+  };
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLTableCellElement>) => {
+  const handleMouseDown = (e: React.MouseEvent) => {
     const { col, row } = getCellFromEvent(e);
     if (col === null || row === null) return;
     setSpreadsheetState({
@@ -57,7 +54,7 @@ export default function SpreadsheetPanel({
     });
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLTableCellElement>) => {
+  const handleMouseMove = (e: React.MouseEvent) => {
     if (!isSelecting) return;
     const { col, row } = getCellFromEvent(e);
     if (col === null || row === null) return;
@@ -67,29 +64,17 @@ export default function SpreadsheetPanel({
     }
   };
 
-  const handleDoubleClick = (e: React.MouseEvent<HTMLTableCellElement>) => {
-    const { col, row } = getCellFromEvent(e);
-    if (col === null || row === null) return;
-    
-    const value = row === -1 
-      ? columns[col]?.name || '' 
-      : columns[col]?.data[row] || '';
-      
-    setSpreadsheetState({
-      isEditing: true,
-      editValue: value,
-      activeCell: { col, row },
-    });
-  };
-
-  const handleEditKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      finishEditing((e.target as HTMLInputElement).value, true);
-    } else if (e.key === 'Escape') {
-      setSpreadsheetState({ isEditing: false, editValue: '' });
-    }
+  const handleMouseUp = () => {
+    setSpreadsheetState({ isSelecting: false });
   };
   
+  useEffect(() => {
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
   const finishEditing = (value: string, fromEnter = false) => {
     if (!isEditing) return;
     const { col, row } = activeCell;
@@ -97,10 +82,9 @@ export default function SpreadsheetPanel({
     if (row === -1) {
       onHeaderChange(col, value);
     } else {
-      onCellChange(col, value);
+      onCellChange(col, row, value);
     }
-
-    const nextActiveCell = fromEnter ? { col, row: row + 1 } : activeCell;
+    const nextActiveCell = fromEnter && row + 1 < 200 ? { col, row: row + 1 } : activeCell;
     
     setSpreadsheetState({
       isEditing: false,
@@ -109,15 +93,53 @@ export default function SpreadsheetPanel({
     });
   };
 
-  const getCellFromEvent = (e: React.MouseEvent<HTMLTableCellElement>): Cell | { col: null; row: null } => {
-    const target = e.target as HTMLTableCellElement;
-    const colStr = target.dataset.col;
-    const rowStr = target.dataset.row;
-    if (colStr && rowStr) {
-      return { col: parseInt(colStr, 10), row: parseInt(rowStr, 10) };
-    }
-    return { col: null, row: null };
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    const { col, row } = getCellFromEvent(e);
+    if (col === null || row === null) return;
+    
+    const value = row === -1 
+      ? columns[col]?.name || '' 
+      : String(columns[col]?.data[row] || '');
+      
+    setSpreadsheetState({
+      isEditing: true,
+      editValue: value,
+      activeCell: { col, row },
+    });
   };
+  
+  const handleEditKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      finishEditing((e.target as HTMLInputElement).value, true);
+    } else if (e.key === 'Escape') {
+      setSpreadsheetState({ isEditing: false, editValue: '' });
+    }
+  };
+
+  const handleDragStart = (e: React.DragEvent<HTMLTableCellElement>) => {
+      const { col, row } = getCellFromEvent(e as any);
+      if (col === null || row !== -1 || !selectionStart || !selectionEnd) {
+          e.preventDefault();
+          return;
+      }
+
+      const minCol = Math.min(selectionStart.col, selectionEnd.col);
+      const maxCol = Math.max(selectionStart.col, selectionEnd.col);
+      const indices = [];
+      for(let i = minCol; i <= maxCol; i++) {
+          if (columns[i]?.name) { // Only allow dragging named columns
+              indices.push(i);
+          }
+      }
+
+      if (indices.length > 0 && indices.length <= 2) {
+          e.dataTransfer.setData('application/json', JSON.stringify(indices));
+          e.dataTransfer.effectAllowed = 'copy';
+      } else {
+          e.preventDefault();
+      }
+  };
+
 
   const isInSelection = (c: number, r: number) => {
     if (!selectionStart || !selectionEnd) return false;
@@ -131,78 +153,79 @@ export default function SpreadsheetPanel({
   const numRows = 200;
 
   return (
-    <div ref={containerRef} className="panel-content" id="spreadsheet-content">
-      <div className="spreadsheet-container">
-        <table className="spreadsheet-table">
-          <thead>
-            <tr>
-              <th data-col={-1} data-row={-1}></th>
-              {columns.map((col, c) => (
-                <th
-                  key={c}
-                  data-col={c}
-                  data-row={-1}
-                  onMouseDown={handleMouseDown}
-                  onMouseMove={handleMouseMove}
-                  onDoubleClick={handleDoubleClick}
-                  className={cn(
-                    'col-header',
-                    { 'selected': activeCell.col === c && activeCell.row === -1 },
-                    { 'in-selection': isInSelection(c, -1) }
-                  )}
-                >
-                  {isEditing && activeCell.col === c && activeCell.row === -1 ? (
-                    <input
-                      type="text"
-                      value={editValue}
-                      onChange={(e) => setSpreadsheetState({ editValue: e.target.value })}
-                      onBlur={(e) => finishEditing(e.target.value)}
-                      onKeyDown={handleEditKeyDown}
-                      autoFocus
-                    />
-                  ) : (
-                    col.name
-                  )}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {Array.from({ length: numRows }).map((_, r) => (
-              <tr key={r}>
-                <td className="row-header" data-col={-1} data-row={r}>{r + 1}</td>
+    <ScrollArea className="h-full w-full" onMouseDown={handleMouseDown} onMouseMove={handleMouseMove}>
+        <div className="relative">
+            <table className="w-full border-collapse text-sm font-mono">
+            <thead>
+                <tr>
+                <th className="sticky top-0 left-0 z-20 bg-card border border-border w-12 text-center select-none"></th>
                 {columns.map((col, c) => (
-                  <td
-                    key={`${c}-${r}`}
+                    <th
+                    key={c}
                     data-col={c}
-                    data-row={r}
-                    onMouseDown={handleMouseDown}
-                    onMouseMove={handleMouseMove}
+                    data-row={-1}
                     onDoubleClick={handleDoubleClick}
+                    onDragStart={handleDragStart}
+                    draggable={isInSelection(c, -1) && columns[c]?.name?.length > 0}
                     className={cn(
-                        { 'selected': activeCell.col === c && activeCell.row === r },
-                        { 'in-selection': isInSelection(c, r) }
+                        'sticky top-0 z-10 bg-card border border-border p-1 text-center font-semibold select-none min-w-[100px] h-8',
+                        { 'bg-primary/20 ring-2 ring-primary': isInSelection(c, -1) },
+                        { 'cursor-grab': isInSelection(c, -1) && columns[c]?.name?.length > 0 }
                     )}
-                  >
-                    {isEditing && activeCell.col === c && activeCell.row === r ? (
-                      <input
+                    >
+                    {isEditing && activeCell.col === c && activeCell.row === -1 ? (
+                        <input
                         type="text"
                         value={editValue}
                         onChange={(e) => setSpreadsheetState({ editValue: e.target.value })}
                         onBlur={(e) => finishEditing(e.target.value)}
                         onKeyDown={handleEditKeyDown}
                         autoFocus
-                      />
+                        className="w-full bg-background outline-none text-center"
+                        />
                     ) : (
-                      col.data[r]
+                        col.name
                     )}
-                  </td>
+                    </th>
                 ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+                </tr>
+            </thead>
+            <tbody>
+                {Array.from({ length: numRows }).map((_, r) => (
+                <tr key={r}>
+                    <td className="sticky left-0 z-10 bg-card border border-border w-12 text-center select-none text-muted-foreground">{r + 1}</td>
+                    {columns.map((col, c) => (
+                    <td
+                        key={`${c}-${r}`}
+                        data-col={c}
+                        data-row={r}
+                        onDoubleClick={handleDoubleClick}
+                        className={cn(
+                            'border border-border p-1 text-right min-w-[100px] h-8',
+                            { 'bg-primary/20 ring-1 ring-inset ring-primary': isInSelection(c, r) },
+                            { 'ring-2 ring-primary': activeCell.col === c && activeCell.row === r}
+                        )}
+                    >
+                        {isEditing && activeCell.col === c && activeCell.row === r ? (
+                        <input
+                            type="text"
+                            value={editValue}
+                            onChange={(e) => setSpreadsheetState({ editValue: e.target.value })}
+                            onBlur={(e) => finishEditing(e.target.value)}
+                            onKeyDown={handleEditKeyDown}
+                            autoFocus
+                            className="w-full bg-background outline-none text-right"
+                        />
+                        ) : (
+                        col.data[r]
+                        )}
+                    </td>
+                    ))}
+                </tr>
+                ))}
+            </tbody>
+            </table>
+        </div>
+    </ScrollArea>
   );
 }
