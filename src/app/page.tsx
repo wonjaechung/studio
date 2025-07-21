@@ -334,15 +334,6 @@ export default function Home() {
 
   return (
     <>
-      <head>
-          <meta charSet="UTF-8"/>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-          <title>InsightFlow - All-in-One Analytics</title>
-          <script src="https://cdn.tailwindcss.com" async></script>
-          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Code+Pro:wght@400;600&display=swap" rel="stylesheet"/>
-          <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js" async></script>
-          <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" charSet="utf-8" async></script>
-      </head>
       <div className="main-grid">
         <div id="importer" className="panel">
             <div className="panel-header"><h2 className="panel-title">Import Lab Data (Simulation)</h2></div>
