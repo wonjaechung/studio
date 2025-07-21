@@ -31,16 +31,16 @@ interface GraphingPanelProps {
   showMessageModal: (message: string) => void;
 }
 
-const ExportToggle = ({ onDragStart }: { onDragStart: (e: React.DragEvent) => void }) => {
+const ExportToggle = ({ onDragStart, disabled }: { onDragStart: (e: React.DragEvent) => void, disabled: boolean }) => {
     const [checked, setChecked] = React.useState(false);
 
     return (
         <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <div className="flex items-center space-x-2" draggable={checked} onDragStart={onDragStart} >
-                        <Switch id="export-viewer-toggle" checked={checked} onCheckedChange={setChecked}/>
-                        <Label htmlFor="export-viewer-toggle" className="text-xs text-muted-foreground" style={{cursor: checked ? 'grab' : 'default'}}>Export</Label>
+                    <div className="flex items-center space-x-2" draggable={checked && !disabled} onDragStart={onDragStart} >
+                        <Switch id="export-viewer-toggle" checked={checked} onCheckedChange={setChecked} disabled={disabled}/>
+                        <Label htmlFor="export-viewer-toggle" className="text-xs text-muted-foreground" style={{cursor: (checked && !disabled) ? 'grab' : 'default'}}>Export</Label>
                     </div>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -169,6 +169,7 @@ export function GraphingPanel({ state, spreadsheetColumns, onFunctionInputChange
         try {
             const colIndicesStr = e.dataTransfer.getData('application/json');
             if (!colIndicesStr) return;
+            
             const colIndices = JSON.parse(colIndicesStr) as number[];
             
             const validCols = colIndices.filter(i => spreadsheetColumns[i] && spreadsheetColumns[i].name);
@@ -220,7 +221,7 @@ export function GraphingPanel({ state, spreadsheetColumns, onFunctionInputChange
         >
             <CardHeader className="flex-row items-center justify-between py-3">
                 <CardTitle className="text-base">Viewer</CardTitle>
-                <ExportToggle onDragStart={handleExportDrag} />
+                <ExportToggle onDragStart={handleExportDrag} disabled={state.currentView.type !== 'plot'} />
             </CardHeader>
             <CardContent className="flex-grow flex flex-col gap-4 min-h-0 p-4 pt-2 transition-all">
                 <div className="flex gap-2">

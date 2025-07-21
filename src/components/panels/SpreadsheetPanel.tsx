@@ -16,18 +16,19 @@ interface SpreadsheetPanelProps {
   setState: (update: Partial<SpreadsheetState> | ((prevState: SpreadsheetState) => Partial<SpreadsheetState>)) => void;
   onMenuClick: () => void;
   onClearClick: () => void;
+  showMessageModal: (message: string) => void;
 }
 
-const ExportToggle = ({ onDragStart }: { onDragStart: (e: React.DragEvent) => void }) => {
+const ExportToggle = ({ onDragStart, disabled }: { onDragStart: (e: React.DragEvent) => void, disabled: boolean }) => {
     const [checked, setChecked] = React.useState(false);
 
     return (
         <TooltipProvider>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <div className="flex items-center space-x-2" draggable={checked} onDragStart={onDragStart}>
-                        <Switch id="export-sheet-toggle" checked={checked} onCheckedChange={setChecked} />
-                        <Label htmlFor="export-sheet-toggle" className="text-xs text-muted-foreground" style={{cursor: checked ? 'grab' : 'default'}}>Export</Label>
+                    <div className="flex items-center space-x-2" draggable={checked && !disabled} onDragStart={onDragStart}>
+                        <Switch id="export-sheet-toggle" checked={checked} onCheckedChange={setChecked} disabled={disabled} />
+                        <Label htmlFor="export-sheet-toggle" className="text-xs text-muted-foreground" style={{cursor: (checked && !disabled) ? 'grab' : 'default'}}>Export</Label>
                     </div>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -38,7 +39,7 @@ const ExportToggle = ({ onDragStart }: { onDragStart: (e: React.DragEvent) => vo
     );
 };
 
-export function SpreadsheetPanel({ state, setState, onMenuClick, onClearClick }: SpreadsheetPanelProps) {
+export function SpreadsheetPanel({ state, setState, onMenuClick, onClearClick, showMessageModal }: SpreadsheetPanelProps) {
   const { columns, activeCell, isEditing, editValue, selectionStart, selectionEnd } = state;
   const numCols = Math.max(columns.length + 5, 26);
   const numRows = 200;
@@ -129,19 +130,22 @@ export function SpreadsheetPanel({ state, setState, onMenuClick, onClearClick }:
 
     const minCol = Math.min(selectionStart.col, selectionEnd.col);
     const maxCol = Math.max(selectionStart.col, selectionEnd.col);
+    
     let colIndices: number[] = [];
     for (let i = minCol; i <= maxCol; i++) {
-        if(columns[i]?.name) colIndices.push(i);
+        if(columns[i]?.name) {
+          colIndices.push(i);
+        }
     }
     
-    if (colIndices.length > 2) {
-        // This should be handled by a modal/toast in a real app
-        console.warn("Can only drag up to two named columns.");
+    if (colIndices.length === 0) {
+        showMessageModal("Please select named columns to drag.");
         e.preventDefault();
         return;
     }
-    if (colIndices.length === 0) {
-        console.warn("Please select named columns to drag.");
+
+    if (colIndices.length > 2) {
+        showMessageModal("You can only drag up to two columns at a time.");
         e.preventDefault();
         return;
     }
@@ -173,7 +177,7 @@ export function SpreadsheetPanel({ state, setState, onMenuClick, onClearClick }:
       <CardHeader className="flex-row items-center justify-between py-3">
         <CardTitle className="text-base">Lists & Spreadsheet</CardTitle>
         <div className="flex items-center gap-4">
-          <ExportToggle onDragStart={handleExportDrag} />
+          <ExportToggle onDragStart={handleExportDrag} disabled={!columns.some(c => c.name)} />
           <div>
             <Button variant="outline" size="sm" onClick={onMenuClick}>Menu</Button>
             <Button variant="outline" size="sm" className="ml-2" onClick={onClearClick}>Clear Sheet</Button>
@@ -192,7 +196,7 @@ export function SpreadsheetPanel({ state, setState, onMenuClick, onClearClick }:
                       const inSelection = selectionStart && selectionEnd && c >= Math.min(selectionStart.col, selectionEnd.col) && c <= Math.max(selectionStart.col, selectionEnd.col);
                       return (
                           <th key={c} data-col={c} data-row={-1}
-                              className={cn("p-2 border-b border-r text-center font-semibold cursor-pointer select-none", inSelection && col?.name && "bg-primary/50", activeCell.col === c && activeCell.row === -1 && "bg-primary/70", "col-header")}
+                              className={cn("p-2 border-b border-r text-center font-semibold cursor-pointer select-none", inSelection && "bg-primary/50", activeCell.col === c && activeCell.row === -1 && "bg-primary/70", "col-header")}
                               draggable={inSelection && !!columns[c]?.name}
                               onDragStart={handleDragStart}
                               onDragEnd={(e) => e.currentTarget.classList.remove('opacity-50', 'bg-primary')}
