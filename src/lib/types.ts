@@ -1,4 +1,5 @@
 
+
 export type Cell = {
   col: number;
   row: number;
@@ -23,9 +24,9 @@ export type SpreadsheetState = {
 export type CalculatorEntry = {
   input: string;
   output: string;
-  explanation?: string;
   type?: string;
   data?: any;
+  explanation?: string;
 };
 
 export type CalculatorState = {
@@ -60,11 +61,13 @@ export type AppState = {
     graphing: boolean;
     spreadsheet: boolean;
   };
+  isDataLoaded: boolean;
 };
 
 export type ModalConfig = {
     id: string;
     title: string;
+    requiresData?: boolean;
     fields: {
         id: string;
         label: string;
@@ -74,7 +77,7 @@ export type ModalConfig = {
     }[];
     buttons: {
         label: string;
-        action: string;
+        action: 'confirm' | 'cancel';
         variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
     }[];
     onConfirm: (formData: any) => void;

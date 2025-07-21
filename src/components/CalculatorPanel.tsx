@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -13,9 +14,11 @@ interface CalculatorPanelProps {
   appState: AppState;
   updateAppState: (updater: (prevState: AppState) => AppState) => void;
   toggleGameMode: () => void;
+  onExpressionSubmit: (expression: string) => void;
+  statsMenu: React.ReactNode;
 }
 
-export default function CalculatorPanel({ appState, updateAppState, toggleGameMode }: CalculatorPanelProps) {
+export default function CalculatorPanel({ appState, updateAppState, toggleGameMode, onExpressionSubmit, statsMenu }: CalculatorPanelProps) {
   const [inputValue, setInputValue] = useState('');
   const [timer, setTimer] = useState(0);
   const { game, calculator } = appState;
@@ -44,26 +47,8 @@ export default function CalculatorPanel({ appState, updateAppState, toggleGameMo
   };
 
   const handleEnterPress = () => {
-    // This is a simplified version. The full implementation would involve a math expression parser.
-    // For now, it just adds the input to history.
     if (!inputValue) return;
-
-    let output = '';
-    try {
-        // A safe evaluation environment would be needed here for real use.
-        // For now, we just add it to history.
-        output = `Executed: ${inputValue}`;
-    } catch (e) {
-        output = 'Error';
-    }
-
-    updateAppState(prev => ({
-        ...prev,
-        calculator: {
-            ...prev.calculator,
-            history: [{ input: inputValue, output }, ...prev.calculator.history]
-        }
-    }));
+    onExpressionSubmit(inputValue);
     setInputValue('');
   };
   
@@ -77,15 +62,18 @@ export default function CalculatorPanel({ appState, updateAppState, toggleGameMo
     <Card className="h-full border-0 shadow-none rounded-lg flex flex-col">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-base">Calculator / Console</CardTitle>
-        <div className="flex items-center space-x-2">
-            {game.isActive && (
-                <span className="text-sm font-mono bg-muted px-2 py-1 rounded-md">
-                    {Math.floor(timer / 60).toString().padStart(2, '0')}:
-                    {(timer % 60).toString().padStart(2, '0')}
-                </span>
-            )}
-            <Label htmlFor="game-mode" className="text-sm">Game Mode</Label>
-            <Switch id="game-mode" checked={game.isActive} onCheckedChange={toggleGameMode} />
+        <div className="flex items-center space-x-4">
+            {statsMenu}
+            <div className="flex items-center space-x-2">
+                {game.isActive && (
+                    <span className="text-sm font-mono bg-muted px-2 py-1 rounded-md">
+                        {Math.floor(timer / 60).toString().padStart(2, '0')}:
+                        {(timer % 60).toString().padStart(2, '0')}
+                    </span>
+                )}
+                <Label htmlFor="game-mode" className="text-sm">Game Mode</Label>
+                <Switch id="game-mode" checked={game.isActive} onCheckedChange={toggleGameMode} />
+            </div>
         </div>
       </CardHeader>
       <CardContent className="flex-grow flex flex-col p-2 pt-0">
@@ -100,7 +88,7 @@ export default function CalculatorPanel({ appState, updateAppState, toggleGameMo
                 {calculator.history.map((entry, index) => (
                 <div key={index} className="mb-2 text-sm">
                     <p className="text-muted-foreground font-mono">&gt; {entry.input}</p>
-                    <p className="font-mono text-right">{entry.output}</p>
+                    <p className="font-mono whitespace-pre-wrap">{entry.output}</p>
                     {entry.explanation && <p className="text-xs text-sky-400 mt-1 p-2 bg-sky-950 rounded">{entry.explanation}</p>}
                 </div>
                 ))}
@@ -109,7 +97,7 @@ export default function CalculatorPanel({ appState, updateAppState, toggleGameMo
         <div className="flex w-full items-center space-x-2">
             <Input
               type="text"
-              placeholder="Type expression or answer..."
+              placeholder="Type expression or command..."
               value={inputValue}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}

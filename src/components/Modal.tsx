@@ -1,7 +1,8 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import type { ModalConfig } from '@/lib/types';
+import type { ModalConfig, AppState } from '@/lib/types';
 import {
   Dialog,
   DialogContent,
@@ -18,19 +19,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 interface ModalProps {
   config: ModalConfig;
+  appState: AppState;
   onClose: () => void;
 }
 
-export default function Modal({ config, onClose }: ModalProps) {
+export default function Modal({ config, appState, onClose }: ModalProps) {
   const [formData, setFormData] = useState<Record<string, any>>({});
+
+  const colNames = appState.spreadsheet.columns.map(c => c.name).filter(Boolean);
 
   useEffect(() => {
     const initialData: Record<string, any> = {};
     config.fields.forEach(field => {
-      initialData[field.id] = field.value ?? (field.type === 'select' ? field.options?.[0] : '');
+      initialData[field.id] = field.value ?? (field.type === 'select' ? colNames[0] : '');
     });
     setFormData(initialData);
-  }, [config]);
+  }, [config, colNames]);
 
   const handleInputChange = (id: string, value: string | number) => {
     setFormData(prev => ({ ...prev, [id]: value }));
@@ -38,7 +42,6 @@ export default function Modal({ config, onClose }: ModalProps) {
 
   const handleConfirm = () => {
     config.onConfirm(formData);
-    onClose();
   };
 
   return (
@@ -64,7 +67,7 @@ export default function Modal({ config, onClose }: ModalProps) {
                     <SelectValue placeholder={`Select ${field.label}`} />
                   </SelectTrigger>
                   <SelectContent>
-                    {field.options?.map(option => (
+                    {(field.options || colNames).map(option => (
                       <SelectItem key={option} value={option}>{option}</SelectItem>
                     ))}
                   </SelectContent>
