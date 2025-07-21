@@ -52,6 +52,69 @@ export default function Home() {
     function invNormForT(p: number) { if (p <= 0 || p >= 1) return NaN; const a = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02, 1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00]; const b = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02, 6.680131188771972e+01, -1.328068155288572e+01]; const c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00, -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00]; const d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00, 3.754408661907416e+00]; const p_low = 0.02425; const p_high = 1 - p_low; let q, x; if (p < p_low) { q = Math.sqrt(-2 * Math.log(p)); x = (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1); } else if (p <= p_high) { q = p - 0.5; let r = q * q; x = (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1); } else { q = Math.sqrt(-2 * Math.log(1 - p)); x = -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1); } return x; }
     const stats: any = { sum: (arr: any[]) => arr.reduce((acc, val) => acc + parseFloat(val), 0), mean: (arr: any[]) => stats.sum(arr) / arr.length, stddev: (arr: any[], isPopulation = false) => { if (arr.length < 2) return 0; const meanVal = stats.mean(arr); const sqDiffs = arr.map((val: any) => Math.pow(parseFloat(val) - meanVal, 2)); const variance = stats.sum(sqDiffs) / (arr.length - (isPopulation ? 0 : 1)); return Math.sqrt(variance); }, median: (arr: any[]) => { const sorted = [...arr].sort((a, b) => parseFloat(a) - parseFloat(b)); const mid = Math.floor(sorted.length / 2); return sorted.length % 2 !== 0 ? parseFloat(sorted[mid]) : (parseFloat(sorted[mid - 1]) + parseFloat(sorted[mid])) / 2; }, quartile: (arr: any[], q: any) => { const sorted = [...arr].sort((a, b) => parseFloat(a) - parseFloat(b)); const pos = (sorted.length - 1) * q; const base = Math.floor(pos); const rest = pos - base; if (sorted[base + 1] !== undefined) return parseFloat(sorted[base]) + rest * (parseFloat(sorted[base + 1]) - parseFloat(sorted[base])); return parseFloat(sorted[base]); }, combinations: (n: number, k: number) => { if (k < 0 || k > n) return 0; if (k === 0 || k === n) return 1; if (k > n / 2) k = n - k; let res = 1; for (let i = 1; i <= k; i++) { res = res * (n - i + 1) / i; } return Math.round(res); }, binomialPdf: (n: number, p: number, k: number) => stats.combinations(n, k) * Math.pow(p, k) * Math.pow(1 - p, n - k), normalCdf: (lower: number, upper: number, mean: number, std: number) => ((window as any).math.erf((upper - mean) / (std * Math.sqrt(2))) - (window as any).math.erf((lower - mean) / (std * Math.sqrt(2)))) / 2, invNorm: (p: number, mean: number, std: number) => mean + std * invNormForT(p), invT: (p: number, df: number) => { const z = invNormForT(p); if (isNaN(z)) return NaN; const z2 = z * z; const g1 = (z2 * z + z) / 4; const g2 = (5 * z2 * z2 * z + 16 * z2 * z + 3 * z) / 96; const g3 = (3 * z2 * z2 * z2 * z + 19 * z2 * z2 * z + 17 * z2 * z - 15 * z) / 384; return z + (g1 / df) + (g2 / (df * df)) + (g3 / (df * df * df)); }, tCdf: (t: number, df: number) => { let x = df / (t*t + df); function incompleteBeta(x: number, a: number, b: number) { if (x <= 0) return 0; if (x >= 1) return 1; const bt = (window as any).math.exp((window as any).math.gammaln(a + b) - (window as any).math.gammaln(a) - (window as any).math.gammaln(b) + a * Math.log(x) + b * Math.log(1 - x)); if (x < (a + 1) / (a + b + 2)) { return bt * continuedFraction(x, a, b) / a; } else { return 1 - bt * continuedFraction(1 - x, b, a) / b; } } function continuedFraction(x: number, a: number, b: number) { const maxIterations = 100; const epsilon = 1e-15; let am = 1, bm = 1, az = 1, qab = a + b, qap = a + 1, qam = a - 1, bz = 1 - qab * x / qap; for (let i = 1; i <= maxIterations; i++) { let d = i * (b - i) * x / ((qam + 2 * i) * (a + 2 * i)); let ap = az + d * am; let bp = bz + d * bm; d = -(a + i) * (qab + i) * x / ((a + 2 * i) * (qap + 2 * i)); let app = ap + d * az; let bpp = bp + d * bz; am = ap / bpp; bm = bp / bpp; az = app / bpp; bz = 1; if (Math.abs(az - am) < (epsilon * Math.abs(az))) return az; } return az; } let p = incompleteBeta(x, df / 2, 0.5); return t > 0 ? 1 - 0.5 * p : 0.5 * p; } };
 
+    // --- SAMPLE DATASETS ---
+    const datasets: any = {
+        'lab_data_1.csv': () => {
+            const studyHours = [1, 1.5, 1.8, 2, 2.5, 3, 3.2, 3.8, 4, 4.5, 5, 5.5, 6];
+            const examScores = [65, 68, 70, 75, 72, 80, 85, 88, 85, 92, 95, 98, 94];
+            addDataColumn('hours', studyHours);
+            addDataColumn('score', examScores);
+        },
+        'lab_data_2.csv': () => {
+            const data = [0.0687, -0.143, -0.3166, 0.9792, -0.7392, 1.1696, 1.6268, 1.6648, 2.1316, 0.1995, 0.4508, 2.1061, -0.1632, 0.2994, 2.2367, -0.2307, 0.0491, 0.3763, -0.968, -0.3106, 0.1941, -0.4198, 0.6603, -0.5957, 0.3475, 0.5439, -0.9052, -0.7361, 0.7319, -1.7248, -0.442, 0.4947, 0.0995, -0.4119, -0.529, 1.2334, -0.5435, 0.546, -0.2114, -1.9367, 1.6385, -0.332, 0.7674, 0.8334, -0.1311, -0.6619, 1.3505, -0.5253, 0.1569, -0.7497, 1.533, 0.7429, 0.2626, 1.1036, -1.194, -1.5924, -0.819, 0.4221, 0.3907, -0.3298, 0.6272, -0.2477, 0.5511, -1.4939, 0.1249, 0.6198, 0.6709, -0.8344, -1.3282, -0.7415, -0.2001, 0.3802, -0.7149, 0.0396, -0.0096, 1.0456, 0.2074, -0.1333, -0.4812, -0.6175, 1.0985, 1.4993, 1.0668, -0.6533, -0.2541, -1.3814, 0.2925, 1.378, -1.6471, 1.6215, 0.8177, 1.354, -1.3235, 1.3774, -1.4567, -2.1042, -0.5691, 1.1272, 0.1826, 0.5698, -0.5152, -0.0187, -0.1092, 0.1604, -0.0636, 0.0946, -1.6034, -0.4917, 1.404, 1.3247, 1.9824, -1.201, 0.0578, 0.0008, 1.3963, 0.9788, 1.1657, 0.744, 0.2992, -0.39, 1.183, -0.0203, -0.1119, 0.3874, 0.0527, -0.6906, -0.7288, 0.4121, -1.0109, 0.1959, -2.1701, -1.0531, 0.475, 1.3721, -2.0913, -0.1224, 0.6717, 0.3396, 2.2336, 1.3428, 0.2251, 1.041, -1.41, -0.5851, -0.8538, -1.0899, -0.3518, 1.1185, 0.3012, -1.9773, 0.7931, -1.2049, 0.5534, -0.6992, -0.3737, 1.0755, 0.2265, -0.6429, 0.5061, 0.5701, -1.0934, 2.4858, 1.0864, -0.1072, -0.8185, -0.7452, 0.9808, -0.1975, -0.645, 0.4138, 0.7963, -0.1915, -0.5562, 0.3489, -0.1301, -1.6246, -0.1712, -0.5602, -2.4321, 0.0223, -2.0496, -0.918, -0.378, -2.0931, 0.4428, 1.6086, 1.9342, 1.7398, 1.003, 0.8114, 0.3492, 0.4001, 1.6521, 0.3483, -1.4525, -1.3617, -1.878, -0.2963, -0.3301, -0.6502, 0.2451, 1.7497, 0.1584, 0.0193, 1.1034, -1.5703, -1.0202, 0.3127, -1.675, 1.7153, 1.826, -1.1964, -1.5667, 0.2458, 0.5224, 0.5666, 0.3809, 0.2722, -0.729, 0.2341, -0.2316, -1.7135, -1.2969, -0.2814, 1.7778, -3.1432, 0.1385, 0.6122, 1.3732, -0.9344, -0.8694, 0.0448, 0.5508, -0.2487, 0.233, -0.495, 0.0869, 0.352, -0.4162, -1.6179, 0.4311, 1.4784, 1.1623, -0.4854, -0.6476, 1.042, 0.8938, -1.4317, 0.0753, 0.2916, 0.954, -0.4373, 0.6798, -1.0398, -0.5838, -0.3851];
+            addDataColumn('normal_dist', data);
+        },
+        'lab_data_3.csv': () => {
+            const data = [1.8, 1.9, 2.1, 2.4, 2.5, 2.8, 2.9, 3.1, 3.2, 3.3, 3.5, 3.6, 3.7, 3.9, 4.1, 4.2, 4.3, 4.4, 4.6, 4.7, 4.8, 4.9, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 5.9, 6, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8, 6.9, 7, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9, 8, 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8, 8.9, 9, 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 9.8, 9.9, 10, 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7, 10.8, 10.9, 11, 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 11.7, 11.8, 11.9, 12, 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 12.7, 12.8, 12.9, 13];
+            addDataColumn('skew_right', data);
+        },
+        'lab_data_4.csv': () => {
+            const data = [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 4, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 5, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 5.9, 6, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8, 6.9, 7, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.8, 7.9, 8, 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8, 8.9, 9, 9.5, 9.8, 10.1, 10.3, 10.5, 10.8, 11.2, 11.5, 11.9, 12.2, 12.6, 13, 13.5, 14, 14.8, 15.5, 16.2, 18, 19];
+            addDataColumn('skew_left', data);
+        },
+        'lab_data_5.csv': () => {
+             const data = [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 4, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 5, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 5.9, 6, 8, 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 8.8, 8.9, 9, 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7, 9.8, 9.9, 10, 10.1, 10.2, 10.3, 10.4, 10.5, 10.6, 10.7, 10.8, 10.9, 11, 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 11.7, 11.8, 11.9, 12, 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 12.7, 12.8, 12.9, 13];
+             addDataColumn('bimodal', data);
+        },
+        'lab_data_6.csv': () => {
+            const data = [55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 1, 150];
+            const data2 = [55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 1, 150].map(v => v + Math.random()*10 - 5);
+            addDataColumn('outlier_data', data);
+            addDataColumn('outlier_data2', data2);
+        },
+        'lab_data_7.csv': () => {
+            const x = Array.from({length: 100}, (_, i) => i);
+            const y = x.map(val => 2 * val + 5 + (Math.random() - 0.5) * 20);
+            addDataColumn('x_strong_corr', x);
+            addDataColumn('y_strong_corr', y);
+        },
+        'lab_data_8.csv': () => {
+            const x = Array.from({length: 100}, (_, i) => i);
+            const y = x.map(val => 0.5 * val + 5 + (Math.random() - 0.5) * 50);
+            addDataColumn('x_weak_corr', x);
+            addDataColumn('y_weak_corr', y);
+        },
+        'lab_data_9.csv': () => {
+            const x = Array.from({length: 100}, (_, i) => i);
+            const y = x.map(() => Math.random() * 100);
+            addDataColumn('x_no_corr', x);
+            addDataColumn('y_no_corr', y);
+        },
+        'lab_data_10.csv': () => {
+            const categories = ['A', 'B', 'C', 'D', 'E'];
+            const cat_data = Array.from({length: 150}, () => categories[Math.floor(Math.random() * categories.length)]);
+            const num_data = cat_data.map(c => {
+                if (c === 'A') return Math.random() * 10 + 10;
+                if (c === 'B') return Math.random() * 15 + 20;
+                if (c === 'C') return Math.random() * 5 + 5;
+                if (c === 'D') return Math.random() * 20 + 15;
+                return Math.random() * 10 + 30;
+            });
+            addDataColumn('category', cat_data);
+            addDataColumn('value_by_cat', num_data);
+        }
+    };
+
     // --- GAME & EXPLANATION CONTENT ---
     const statsQuestions = [ { id: "2016-01", year: 2016, questionNumber: 1, questionText: "The prices, in thousands of dollars, of 304 homes recently sold in a city are summarized in the histogram below. Based on the histogram, which of the following statements must be true?", answerOptions: [ { text: "The minimum price is $250,000.", isCorrect: false }, { text: "The maximum price is $2,500,000.", isCorrect: false }, { text: "The median price is not greater than $750,000.", isCorrect: true }, { text: "The mean price is between $500,000 and $750,000.", isCorrect: false }, { text: "The upper quartile of the prices is greater than $1,500,000.", isCorrect: false } ] }, { id: "2016-02", year: 2016, questionNumber: 2, questionText: "As part of a study on the relationship between the use of tanning booths and the occurrence of skin cancer, researchers reviewed the medical records of 1,436 people. The table in the console shows the data. Of the people in the study who had skin cancer, what fraction used a tanning booth?", answerOptions: [ { text: "190/265", isCorrect: false }, { text: "190/896", isCorrect: true }, { text: "190/1,436", isCorrect: false }, { text: "265/1,436", isCorrect: false }, { text: "896/1,436", isCorrect: false } ] }, { id: "2016-03", year: 2016, questionNumber: 3, questionText: "A researcher wants to determine whether there is convincing statistical evidence that more than 50 percent of households in a city gave a charitable donation. Let p represent the proportion of all households that gave a donation. Which of the following are appropriate hypotheses?", answerOptions: [ { text: "H₀: p = 0.5 and Hₐ: p > 0.5", isCorrect: true }, { text: "H₀: p = 0.5 and Hₐ: p ≠ 0.5", isCorrect: false }, { text: "H₀: p = 0.5 and Hₐ: p < 0.5", isCorrect: false }, { text: "H₀: p > 0.5 and Hₐ: p ≠ 0.5", isCorrect: false }, { text: "H₀: p > 0.5 and Hₐ: p = 0.5", isCorrect: false } ] } ];
     function getExplanation(type: any, data: any) {
@@ -166,7 +229,7 @@ export default function Home() {
     // --- GRAPHING LOGIC ---
     const plotlyLayout = { paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: 'hsl(var(--foreground))', size: 12, family: 'Inter, sans-serif' }, title: { font: { size: 16 } }, xaxis: { gridcolor: 'hsl(var(--border))', zerolinecolor: 'hsl(var(--muted))', titlefont: { size: 14 } }, yaxis: { gridcolor: 'hsl(var(--border))', zerolinecolor: 'hsl(var(--muted))', titlefont: { size: 14 } }, margin: { l: 60, r: 40, b: 50, t: 80 }, showlegend: false };
     function plotDefault() { if(graphPlotDiv) graphPlotDiv.innerHTML = `<div class="flex items-center justify-center h-full text-muted-foreground">Drop columns here to plot data</div>`; }
-    function plotHistogram(colIndex: any) { const col = appState.spreadsheet.columns[colIndex]; const data = getColumnData(col.name); const trace = { x: data, type: 'histogram', marker: { color: 'hsl(var(--primary))' } }; const layout = { ...plotlyLayout, title: `Histogram of ${col.name}`, yaxis: { ...plotlyLayout.yaxis, title: 'Frequency'}}; (window as any).Plotly.newPlot(graphPlotDiv, [trace], layout, {responsive: true}); }
+    function plotHistogram(colIndex: any) { const col = appState.spreadsheet.columns[colIndex]; const data = getColumnData(col.name); const trace = { x: data, type: 'histogram', marker: { color: 'hsl(var(--primary))' }, nbinsx: 30 }; const layout = { ...plotlyLayout, title: `Histogram of ${col.name}`, yaxis: { ...plotlyLayout.yaxis, title: 'Frequency'}}; (window as any).Plotly.newPlot(graphPlotDiv, [trace], layout, {responsive: true}); }
     function plotBoxPlot(colIndex: any) { const col = appState.spreadsheet.columns[colIndex]; const data = getColumnData(col.name); if(data.length === 0) { showMessageModal("Cannot create box plot. The selected column has no numerical data."); return; } const fiveNumSum = { min: Math.min(...data), q1: stats.quartile(data, 0.25), med: stats.median(data), q3: stats.quartile(data, 0.75), max: Math.max(...data) }; const trace = { y: data, type: 'box', marker: { color: 'hsl(var(--primary))' }, name: col.name, boxpoints: false }; const layout = { ...plotlyLayout, title: `<b>Box Plot of ${col.name}</b><br><span style="font-size:12px">Min: ${fiveNumSum.min}, Q1: ${fiveNumSum.q1}, Med: ${fiveNumSum.med}, Q3: ${fiveNumSum.q3}, Max: ${fiveNumSum.max}</span>` }; (window as any).Plotly.newPlot(graphPlotDiv, [trace], layout, {responsive: true}); }
     function plotScatter(colIndex1: any, colIndex2: any) {
         const col1 = appState.spreadsheet.columns[colIndex1]; const col2 = appState.spreadsheet.columns[colIndex2];
@@ -179,13 +242,41 @@ export default function Home() {
         const layout = { ...plotlyLayout, title: `<b>${col1.name} vs. ${col2.name}</b><br><span style="font-size:12px">ŷ = ${a.toFixed(3)} + ${b.toFixed(3)}x | r²=${(r*r).toFixed(3)}</span>`, xaxis: {...plotlyLayout.xaxis, title: col1.name }, yaxis: {...plotlyLayout.yaxis, title: col2.name }};
         (window as any).Plotly.newPlot(graphPlotDiv, [scatterTrace, lineTrace], layout, {responsive: true});
     }
+    function plotDotPlot(colIndex: any) {
+        const col = appState.spreadsheet.columns[colIndex];
+        const data = getColumnData(col.name);
+        if (data.length === 0) { showMessageModal("Cannot create dot plot. The selected column has no numerical data."); return; }
+        const trace = { x: data, type: 'scatter', mode: 'markers', marker: { color: 'hsl(var(--primary))', symbol: 'circle' }, y: Array(data.length).fill(0) };
+        const layout = { ...plotlyLayout, title: `Dot Plot of ${col.name}`, yaxis: { ...plotlyLayout.yaxis, title: '', showticklabels: false, zeroline: false, showgrid: false }, height: 200, margin: { t: 80, b: 50, l: 40, r: 40 } };
+        (window as any).Plotly.newPlot(graphPlotDiv, [trace], layout, { responsive: true });
+    }
+    function generateStemAndLeaf(colIndex: any) {
+        const col = appState.spreadsheet.columns[colIndex];
+        const data = getColumnData(col.name).sort((a, b) => a - b);
+        if (data.length === 0) { showMessageModal("Cannot create stem-and-leaf plot. The selected column has no numerical data."); return; }
+        const stems: any = {};
+        data.forEach(d => {
+            const stem = Math.floor(d / 10);
+            const leaf = d % 10;
+            if (!stems[stem]) stems[stem] = [];
+            stems[stem].push(leaf);
+        });
+
+        let outputHTML = `<div class="stem-and-leaf-plot"><div class="stem-and-leaf-title">Stem-and-Leaf Plot of ${col.name}</div><pre>`;
+        Object.keys(stems).sort((a,b) => parseInt(a) - parseInt(b)).forEach(stem => {
+            const leaves = stems[stem].sort((a: number, b: number) => a-b).join(' ');
+            outputHTML += `${stem.toString().padStart(3, ' ')} | ${leaves}\n`;
+        });
+        outputHTML += `</pre></div>`;
+        graphPlotDiv!.innerHTML = outputHTML;
+    }
     function showPlotTypeMenu(colIndices: any) {
         appState.graphing.pendingPlot = { indices: colIndices };
         let subtitle = ''; let optionsHTML = '';
         if (colIndices.length === 1) {
             const colName = appState.spreadsheet.columns[colIndices[0]].name;
             subtitle = `1 Variable Selected: <strong>${colName}</strong>`;
-            optionsHTML = `<button class="btn" data-plottype="histogram">Histogram</button><button class="btn" data-plottype="boxplot">Box Plot</button>`;
+            optionsHTML = `<button class="btn" data-plottype="histogram">Histogram</button><button class="btn" data-plottype="boxplot">Box Plot</button><button class="btn" data-plottype="dotplot">Dot Plot</button><button class="btn" data-plottype="stemleaf">Stem-and-Leaf</button>`;
         } else if (colIndices.length === 2) {
             const name1 = appState.spreadsheet.columns[colIndices[0]].name;
             const name2 = appState.spreadsheet.columns[colIndices[1]].name;
@@ -262,14 +353,17 @@ export default function Home() {
         let commandHandled = false;
         if (appState.game.isActive) { commandHandled = handleGameAnswer(expression); }
         if (commandHandled) { /* Handled by game logic */ }
-        else if (expression === "df = pd.read_csv('lab_data_1.csv')") {
-            actions.clearSpreadsheet();
-            const studyHours = [1, 1.5, 1.8, 2, 2.5, 3, 3.2, 3.8, 4, 4.5, 5, 5.5, 6];
-            const examScores = [65, 68, 70, 75, 72, 80, 85, 88, 85, 92, 95, 98, 94];
-            addDataColumn('hours', studyHours);
-            addDataColumn('score', examScores);
-            renderSpreadsheet(); appState.spreadsheet.isDataLoaded = true;
-            addHistoryEntry({ input: expression, output: "Success: Sample data loaded." });
+        else if (expression.startsWith("df = pd.read_csv")) {
+            const match = expression.match(/'(.*?)'/);
+            if (match && match[1] && datasets[match[1]]) {
+                actions.clearSpreadsheet();
+                datasets[match[1]]();
+                renderSpreadsheet();
+                appState.spreadsheet.isDataLoaded = true;
+                addHistoryEntry({ input: expression, output: `Success: Sample data '${match[1]}' loaded.` });
+            } else {
+                addHistoryEntry({ input: expression, output: `Error: Dataset not found.` });
+            }
             commandHandled = true;
         } else if (expression === 'df.head()') {
             if (appState.spreadsheet.isDataLoaded) {
@@ -371,7 +465,17 @@ export default function Home() {
         
         exportGraphToggle!.addEventListener('change', (e) => {
             const isChecked = (e.target as HTMLInputElement).checked;
-            setGraphDraggable(isChecked);
+            if (isChecked) {
+                 if (graphPlotDiv!.querySelector('.js-plotly-plot')) {
+                    (window as any).Plotly.toImage(graphPlotDiv, { format: 'png', width: 800, height: 600 }).then((dataUrl: any) => {
+                        graphPlotDiv!.setAttribute('data-img-url', dataUrl);
+                        graphPlotDiv!.setAttribute('draggable', 'true');
+                    });
+                }
+            } else {
+                 graphPlotDiv!.setAttribute('draggable', 'false');
+                 graphPlotDiv!.removeAttribute('data-img-url');
+            }
         });
 
         graphPlotDiv!.addEventListener('dragstart', (e: DragEvent) => {
@@ -379,9 +483,13 @@ export default function Home() {
                 e.preventDefault();
                 return;
             }
-            (window as any).Plotly.toImage(graphPlotDiv, { format: 'png', width: 800, height: 600 }).then((dataUrl: any) => {
-                 e.dataTransfer!.setData('text/plain', 'drag-image');
-            });
+            const dataUrl = graphPlotDiv!.getAttribute('data-img-url');
+            if (dataUrl) {
+                e.dataTransfer!.setData('text/uri-list', dataUrl);
+                e.dataTransfer!.setData('text/plain', dataUrl);
+            } else {
+                e.preventDefault();
+            }
         });
 
         calculatorDisplay!.addEventListener('dragstart', (e: DragEvent) => {
@@ -405,7 +513,7 @@ export default function Home() {
         graphingPanel!.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer!.dropEffect = 'copy'; graphingPanel!.classList.add('drag-over'); });
         graphingPanel!.addEventListener('dragleave', () => { graphingPanel!.classList.remove('drag-over'); });
         graphingPanel!.addEventListener('drop', (e: DragEvent) => { e.preventDefault(); graphingPanel!.classList.remove('drag-over'); const colIndices = JSON.parse(e.dataTransfer!.getData('application/json')); showPlotTypeMenu(colIndices); });
-        graphContextMenu!.addEventListener('click', (e) => { if ((e.target as HTMLElement).matches('[data-plottype]')) { const type = (e.target as HTMLElement).dataset.plottype; if (appState.graphing.pendingPlot) { const { indices } = appState.graphing.pendingPlot; if (type === 'histogram') plotHistogram(indices[0]); else if (type === 'boxplot') plotBoxPlot(indices[0]); else if (type === 'scatter') plotScatter(indices[0], indices[1]); } graphContextMenu!.classList.add('hidden'); appState.graphing.pendingPlot = null; } });
+        graphContextMenu!.addEventListener('click', (e) => { if ((e.target as HTMLElement).matches('[data-plottype]')) { const type = (e.target as HTMLElement).dataset.plottype; if (appState.graphing.pendingPlot) { const { indices } = appState.graphing.pendingPlot; if (type === 'histogram') plotHistogram(indices[0]); else if (type === 'boxplot') plotBoxPlot(indices[0]); else if (type === 'scatter') plotScatter(indices[0], indices[1]); else if (type === 'dotplot') plotDotPlot(indices[0]); else if (type === 'stemleaf') generateStemAndLeaf(indices[0]); } graphContextMenu!.classList.add('hidden'); appState.graphing.pendingPlot = null; } });
         graphContextMenu!.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); });
         graphContextMenu!.addEventListener('drop', (e: DragEvent) => { e.preventDefault(); e.stopPropagation(); const newlyDroppedIndices = JSON.parse(e.dataTransfer!.getData('application/json')); const existingIndices = appState.graphing.pendingPlot.indices; const combined = [...new Set([...existingIndices, ...newlyDroppedIndices])]; if (combined.length > 2) { showMessageModal("You can only plot up to two variables."); return; } showPlotTypeMenu(combined); });
 
@@ -646,8 +754,10 @@ export default function Home() {
         }
         .context-menu-title { font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem; }
         .context-menu-subtitle { font-size: 0.875rem; color: hsl(var(--muted-foreground)); }
-        .context-menu-options { display: flex; gap: 1rem; margin-top: 1rem; justify-content: center;}
+        .context-menu-options { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem; justify-content: center;}
         #graphing.drag-over { border-color: hsl(var(--primary)); box-shadow: 0 0 15px 0 hsla(var(--primary), 0.5); }
+        .stem-and-leaf-plot { font-family: 'Source Code Pro', monospace; padding: 1rem; text-align: left; background-color: hsl(var(--secondary)); border-radius: 0.5rem; height: 100%; overflow: auto; }
+        .stem-and-leaf-title { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 1.125rem; margin-bottom: 1rem; }
 
         /* General UI */
         .btn {
