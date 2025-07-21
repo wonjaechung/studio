@@ -231,7 +231,6 @@ export default function MainApp() {
                 onConfirm: (data) => runBinomCdf(data)
             };
             break;
-        // ... more cases for other modals
     }
     if (config) {
         updateAppState(prev => ({ ...prev, modal: config }));
@@ -267,7 +266,6 @@ export default function MainApp() {
 
         newColumns[targetIndex] = { name, data: fullData, formula };
         
-        // Ensure there's always a blank column at the end for new data entry
         if (targetIndex >= newColumns.length - 2) {
             newColumns.push({ name: String.fromCharCode(65 + newColumns.length), data: Array(200).fill('') });
         }
@@ -282,14 +280,12 @@ export default function MainApp() {
         const name = String.fromCharCode(65 + i);
         if (!colNames.has(name)) return name;
     }
-    // Fallback for more than 26 columns
     for (let i = 1; ; i++) {
         const name = `Col${i}`;
         if (!colNames.has(name)) return name;
     }
   };
 
-  // Game Mode Logic
   const toggleGameMode = useCallback(() => {
     updateAppState(prev => {
       const isActive = !prev.game.isActive;
@@ -341,7 +337,6 @@ export default function MainApp() {
       } else {
         newColumns[col] = { name: value, data: Array(200).fill('') };
       }
-       // Ensure there's always a blank column at the end for new data entry
       if (col >= newColumns.length - 2) {
           newColumns.push({ name: String.fromCharCode(65 + newColumns.length), data: Array(200).fill('') });
       }
@@ -508,6 +503,14 @@ export default function MainApp() {
       updateAppState(prev => ({ ...prev, modal: null }));
   };
 
+  const handleMenuSelect = (e: Event) => {
+    const target = e.target as HTMLElement;
+    const modalType = target.dataset.modal;
+    if (modalType) {
+      showModal(modalType);
+    }
+  };
+
   return (
     <main className="main-grid">
       {appState.modal && (
@@ -532,13 +535,13 @@ export default function MainApp() {
                 <DropdownMenuTrigger asChild>
                     <Button variant="outline">Menu</Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent>
+                <DropdownMenuContent onSelect={handleMenuSelect}>
                     <DropdownMenuSub>
                        <DropdownMenuSubTrigger>Statistics</DropdownMenuSubTrigger>
                        <DropdownMenuPortal>
                            <DropdownMenuSubContent>
-                               <DropdownMenuItem onSelect={() => showModal('1varstats')}>One-Variable Statistics</DropdownMenuItem>
-                               <DropdownMenuItem onSelect={() => showModal('linreg')}>Linear Regression (a+bx)</DropdownMenuItem>
+                               <DropdownMenuItem data-modal="1varstats">One-Variable Statistics</DropdownMenuItem>
+                               <DropdownMenuItem data-modal="linreg">Linear Regression (a+bx)</DropdownMenuItem>
                            </DropdownMenuSubContent>
                        </DropdownMenuPortal>
                     </DropdownMenuSub>
@@ -546,7 +549,7 @@ export default function MainApp() {
                        <DropdownMenuSubTrigger>Tests</DropdownMenuSubTrigger>
                        <DropdownMenuPortal>
                            <DropdownMenuSubContent>
-                               <DropdownMenuItem onSelect={() => showModal('ttest')}>t-Test...</DropdownMenuItem>
+                               <DropdownMenuItem data-modal="ttest">t-Test...</DropdownMenuItem>
                            </DropdownMenuSubContent>
                        </DropdownMenuPortal>
                     </DropdownMenuSub>
@@ -554,7 +557,7 @@ export default function MainApp() {
                        <DropdownMenuSubTrigger>Intervals</DropdownMenuSubTrigger>
                        <DropdownMenuPortal>
                            <DropdownMenuSubContent>
-                               <DropdownMenuItem onSelect={() => showModal('tinterval')}>t-Interval...</DropdownMenuItem>
+                               <DropdownMenuItem data-modal="tinterval">t-Interval...</DropdownMenuItem>
                            </DropdownMenuSubContent>
                        </DropdownMenuPortal>
                     </DropdownMenuSub>
@@ -562,10 +565,10 @@ export default function MainApp() {
                        <DropdownMenuSubTrigger>Distributions</DropdownMenuSubTrigger>
                        <DropdownMenuPortal>
                            <DropdownMenuSubContent>
-                               <DropdownMenuItem onSelect={() => showModal('normalcdf')}>Normal Cdf</DropdownMenuItem>
-                               <DropdownMenuItem onSelect={() => showModal('invnorm')}>Inverse Normal</DropdownMenuItem>
-                               <DropdownMenuItem onSelect={() => showModal('binompdf')}>Binomial Pdf</DropdownMenuItem>
-                               <DropdownMenuItem onSelect={() => showModal('binomcdf')}>Binomial Cdf</DropdownMenuItem>
+                               <DropdownMenuItem data-modal="normalcdf">Normal Cdf</DropdownMenuItem>
+                               <DropdownMenuItem data-modal="invnorm">Inverse Normal</DropdownMenuItem>
+                               <DropdownMenuItem data-modal="binompdf">Binomial Pdf</DropdownMenuItem>
+                               <DropdownMenuItem data-modal="binomcdf">Binomial Cdf</DropdownMenuItem>
                            </DropdownMenuSubContent>
                        </DropdownMenuPortal>
                     </DropdownMenuSub>
