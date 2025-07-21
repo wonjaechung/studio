@@ -164,10 +164,10 @@ export default function Home() {
     function showMessageModal(message: any) { renderModal({ title: 'Info', fields: [{ type: 'static', label: message }], buttons: [ { label: 'OK', action: 'closeModal', class:'btn-primary' } ], requiresData: false }); }
 
     // --- GRAPHING LOGIC ---
-    const plotlyLayout = { paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: 'var(--foreground)' }, xaxis: { gridcolor: 'var(--secondary)', zerolinecolor: 'var(--muted)' }, yaxis: { gridcolor: 'var(--secondary)', zerolinecolor: 'var(--muted)' }, margin: { l: 50, r: 20, b: 40, t: 40 }, showlegend: false };
+    const plotlyLayout = { paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: 'var(--foreground)', size: 14 }, xaxis: { gridcolor: 'var(--secondary)', zerolinecolor: 'var(--muted)' }, yaxis: { gridcolor: 'var(--secondary)', zerolinecolor: 'var(--muted)' }, margin: { l: 60, r: 40, b: 50, t: 80 }, showlegend: false };
     function plotDefault() { if(graphPlotDiv) graphPlotDiv.innerHTML = `<div class="flex items-center justify-center h-full text-text-muted">Drop columns here to plot data</div>`; }
     function plotHistogram(colIndex: any) { const col = appState.spreadsheet.columns[colIndex]; const data = getColumnData(col.name); const trace = { x: data, type: 'histogram', marker: { color: 'var(--primary)' } }; const layout = { ...plotlyLayout, title: `Histogram of ${col.name}`, yaxis: { ...plotlyLayout.yaxis, title: 'Frequency'}}; (window as any).Plotly.newPlot(graphPlotDiv, [trace], layout, {responsive: true}); }
-    function plotBoxPlot(colIndex: any) { const col = appState.spreadsheet.columns[colIndex]; const data = getColumnData(col.name); const trace = { y: data, type: 'box', marker: { color: 'var(--primary)' }, name: col.name }; const layout = { ...plotlyLayout, title: `Box Plot of ${col.name}`}; (window as any).Plotly.newPlot(graphPlotDiv, [trace], layout, {responsive: true}); }
+    function plotBoxPlot(colIndex: any) { const col = appState.spreadsheet.columns[colIndex]; const data = getColumnData(col.name); if(data.length === 0) { showMessageModal("Cannot create box plot. The selected column has no numerical data."); return; } const fiveNumSum = { min: Math.min(...data), q1: stats.quartile(data, 0.25), med: stats.median(data), q3: stats.quartile(data, 0.75), max: Math.max(...data) }; const trace = { y: data, type: 'box', marker: { color: 'var(--primary)' }, name: col.name, boxpoints: 'all', jitter: 0.3, pointpos: -1.8 }; const layout = { ...plotlyLayout, title: `<b>Box Plot of ${col.name}</b><br><span style="font-size:12px">Min: ${fiveNumSum.min}, Q1: ${fiveNumSum.q1}, Med: ${fiveNumSum.med}, Q3: ${fiveNumSum.q3}, Max: ${fiveNumSum.max}</span>` }; (window as any).Plotly.newPlot(graphPlotDiv, [trace], layout, {responsive: true}); }
     function plotScatter(colIndex1: any, colIndex2: any) {
         const col1 = appState.spreadsheet.columns[colIndex1]; const col2 = appState.spreadsheet.columns[colIndex2];
         const xData = getColumnData(col1.name); const yData = getColumnData(col2.name);
@@ -176,7 +176,7 @@ export default function Home() {
         const xRange = [Math.min(...xData), Math.max(...xData)]; const yRange = xRange.map(x => a + b * x);
         const scatterTrace = { x: xData, y: yData, mode: 'markers', type: 'scatter', name: 'Data', marker: { color: '#F59E0B' } };
         const lineTrace = { x: xRange, y: yRange, mode: 'lines', type: 'scatter', name: 'Fit', line: { color: '#EF4444' } };
-        const layout = { ...plotlyLayout, title: `<b>${col1.name} vs. ${col2.name}</b><br>ŷ = ${a.toFixed(3)} + ${b.toFixed(3)}x | r²=${(r*r).toFixed(3)}`, xaxis: {...plotlyLayout.xaxis, title: col1.name }, yaxis: {...plotlyLayout.yaxis, title: col2.name }};
+        const layout = { ...plotlyLayout, title: `<b>${col1.name} vs. ${col2.name}</b><br><span style="font-size:12px">ŷ = ${a.toFixed(3)} + ${b.toFixed(3)}x | r²=${(r*r).toFixed(3)}</span>`, xaxis: {...plotlyLayout.xaxis, title: col1.name }, yaxis: {...plotlyLayout.yaxis, title: col2.name }};
         (window as any).Plotly.newPlot(graphPlotDiv, [scatterTrace, lineTrace], layout, {responsive: true});
     }
     function showPlotTypeMenu(colIndices: any) {
@@ -291,11 +291,12 @@ export default function Home() {
 
     // --- GAME MODE LOGIC ---
     function toggleGameMode() { appState.game.isActive = !appState.game.isActive; if (appState.game.isActive) { startGame(); } else { stopGame(); } }
-    function startGame() { appState.game = { ...appState.game, startTime: Date.now(), questionsAnswered: 0, correctAnswers: 0 }; gameTimer!.classList.remove('hidden'); appState.game.timerInterval = setInterval(updateGameTimer, 1000); nextQuestion(); }
-    function stopGame() { if (appState.game.timerInterval) clearInterval(appState.game.timerInterval); gameDisplay!.classList.add('hidden'); gameTimer!.classList.add('hidden'); }
+    function startGame() { appState.game = { ...appState.game, isActive: true, startTime: Date.now(), questionsAnswered: 0, correctAnswers: 0 }; gameTimer!.classList.remove('hidden'); appState.game.timerInterval = setInterval(updateGameTimer, 1000); nextQuestion(); }
+    function stopGame() { if (appState.game.timerInterval) clearInterval(appState.game.timerInterval); appState.game.isActive = false; gameDisplay!.classList.add('hidden'); gameTimer!.classList.add('hidden'); }
+    function endGame() { const { correctAnswers } = appState.game; const scoreMessage = `Game Over! You scored ${correctAnswers} out of 5.`; addHistoryEntry({ input: "Game Finished", output: scoreMessage }); stopGame(); }
     function updateGameTimer() { const elapsed = Math.floor((Date.now() - appState.game.startTime) / 1000); const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0'); const seconds = (elapsed % 60).toString().padStart(2, '0'); gameTimer!.textContent = `${minutes}:${seconds}`; }
-    function nextQuestion() { const question = statsQuestions[Math.floor(Math.random() * statsQuestions.length)]; appState.game.question = question; let questionHTML = `<p class="font-bold mb-2">Question ${appState.game.questionsAnswered + 1}:</p><p>${question.questionText}</p><div class="grid grid-cols-2 gap-2 mt-4">`; question.answerOptions.forEach((opt, i) => { questionHTML += `<button class="btn text-left" data-action="answerQuestion" data-index="${i}">${String.fromCharCode(65 + i)}) ${opt.text}</button>`; }); questionHTML += `</div>`; gameDisplay!.innerHTML = questionHTML; gameDisplay!.classList.remove('hidden'); }
-    function handleGameAnswer(answerIndex: any) { const { question } = appState.game; const selectedOption = question.answerOptions[answerIndex]; if (selectedOption.isCorrect) { appState.game.correctAnswers++; addHistoryEntry({ input: `Answer ${String.fromCharCode(65 + parseInt(answerIndex))}`, output: 'Correct!' }); } else { addHistoryEntry({ input: `Answer ${String.fromCharCode(65 + parseInt(answerIndex))}`, output: 'Incorrect.' }); } appState.game.questionsAnswered++; nextQuestion(); return true; }
+    function nextQuestion() { const question = statsQuestions[Math.floor(Math.random() * statsQuestions.length)]; appState.game.question = question; let questionHTML = `<p class="font-bold mb-2">Question ${appState.game.questionsAnswered + 1} of 5:</p><p>${question.questionText}</p><div class="grid grid-cols-2 gap-2 mt-4">`; question.answerOptions.forEach((opt, i) => { questionHTML += `<button class="btn text-left" data-action="answerQuestion" data-index="${i}">${String.fromCharCode(65 + i)}) ${opt.text}</button>`; }); questionHTML += `</div>`; gameDisplay!.innerHTML = questionHTML; gameDisplay!.classList.remove('hidden'); }
+    function handleGameAnswer(answerIndex: any) { const { question } = appState.game; const selectedOption = question.answerOptions[answerIndex]; if (selectedOption.isCorrect) { appState.game.correctAnswers++; addHistoryEntry({ input: `Answer for Q${appState.game.questionsAnswered + 1}`, output: 'Correct!' }); } else { addHistoryEntry({ input: `Answer for Q${appState.game.questionsAnswered + 1}`, output: 'Incorrect.' }); } appState.game.questionsAnswered++; if (appState.game.questionsAnswered >= 5) { endGame(); } else { nextQuestion(); } return true; }
     actions.answerQuestion = (event: any) => { const index = event.target.dataset.index; handleGameAnswer(index); };
 
     // --- OTHER UTILS ---
@@ -536,3 +537,5 @@ export default function Home() {
     </>
   );
 }
+
+    
