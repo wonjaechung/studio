@@ -325,7 +325,7 @@ export default function Home() {
 
         // Initial render
         appState.calculator.history.push({ 
-            input: 'Welcome to Wonjae\'s AP Stat Lab!', 
+            input: "Welcome to Wonjae's AP Stat Lab!", 
             output: `<span class="text-base">Enter expressions, import data, or use the menu to start.</span>
                      <div class="text-sm text-muted-foreground mt-2">&gt; To import sample data, type or paste: <code class="bg-muted px-1 py-0.5 rounded">df = pd.read_csv('lab_data_1.csv')</code></div>`
         });
