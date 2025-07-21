@@ -28,6 +28,7 @@ export default function SpreadsheetPanel({
     selectionStart,
     selectionEnd,
   } = spreadsheetState;
+  const mainContainerRef = useRef<HTMLDivElement>(null);
 
   const getCellFromEvent = (e: React.MouseEvent): Cell | { col: null; row: null } => {
     const target = e.target as HTMLElement;
@@ -69,10 +70,13 @@ export default function SpreadsheetPanel({
   };
   
   useEffect(() => {
-    document.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
+    const mainContainer = mainContainerRef.current;
+    if (mainContainer) {
+        mainContainer.addEventListener('mouseup', handleMouseUp);
+        return () => {
+          mainContainer.removeEventListener('mouseup', handleMouseUp);
+        };
+    }
   }, []);
 
   const finishEditing = (value: string, fromEnter = false) => {
@@ -140,6 +144,24 @@ export default function SpreadsheetPanel({
       }
   };
 
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text/plain');
+    const rows = pastedText.split(/\r?\n/).filter(row => row.trim() !== '');
+    const data = rows.map(row => row.split('\t'));
+
+    const { col: startCol, row: startRow } = activeCell;
+
+    data.forEach((rowData, r) => {
+        rowData.forEach((cellData, c) => {
+            const targetRow = startRow + r;
+            const targetCol = startCol + c;
+            if (targetRow < 200 && targetCol < columns.length) {
+                onCellChange(targetCol, targetRow, cellData);
+            }
+        });
+    });
+  };
 
   const isInSelection = (c: number, r: number) => {
     if (!selectionStart || !selectionEnd) return false;
@@ -153,7 +175,13 @@ export default function SpreadsheetPanel({
   const numRows = 200;
 
   return (
-    <ScrollArea className="h-full w-full" onMouseDown={handleMouseDown} onMouseMove={handleMouseMove}>
+    <ScrollArea 
+        className="h-full w-full" 
+        onMouseDown={handleMouseDown} 
+        onMouseMove={handleMouseMove}
+        onPaste={handlePaste}
+        ref={mainContainerRef}
+    >
         <div className="relative">
             <table className="w-full border-collapse text-sm font-mono">
             <thead>
