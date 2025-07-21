@@ -340,21 +340,11 @@ export default function Home() {
         display.setAttribute('draggable', isDraggable.toString());
     }
     
-    async function setGraphDraggable(isDraggable: boolean) {
+    function setGraphDraggable(isDraggable: boolean) {
         if (isDraggable && graphPlotDiv!.querySelector('.js-plotly-plot')) {
-            try {
-                const dataUrl = await (window as any).Plotly.toImage(graphPlotDiv, { format: 'png', width: 800, height: 600 });
-                graphPlotDiv!.setAttribute('draggable', 'true');
-                graphPlotDiv!.dataset.dragUrl = dataUrl;
-            } catch (err) {
-                console.error(err);
-                showMessageModal("Could not create graph image for export.");
-                (exportGraphToggle as HTMLInputElement).checked = false;
-                graphPlotDiv!.setAttribute('draggable', 'false');
-            }
+            graphPlotDiv!.setAttribute('draggable', 'true');
         } else {
             graphPlotDiv!.setAttribute('draggable', 'false');
-            delete graphPlotDiv!.dataset.dragUrl;
         }
     }
 
@@ -385,12 +375,13 @@ export default function Home() {
         });
 
         graphPlotDiv!.addEventListener('dragstart', (e: DragEvent) => {
-            const dataUrl = graphPlotDiv!.dataset.dragUrl;
-            if (graphPlotDiv!.getAttribute('draggable') !== 'true' || !dataUrl) {
+            if (graphPlotDiv!.getAttribute('draggable') !== 'true') {
                 e.preventDefault();
                 return;
             }
-            e.dataTransfer!.setData('DownloadURL', `image/png:graph.png:${dataUrl}`);
+            (window as any).Plotly.toImage(graphPlotDiv, { format: 'png', width: 800, height: 600 }).then((dataUrl: any) => {
+                 e.dataTransfer!.setData('text/plain', 'drag-image');
+            });
         });
 
         calculatorDisplay!.addEventListener('dragstart', (e: DragEvent) => {
@@ -693,3 +684,5 @@ export default function Home() {
     </>
   );
 }
+
+    
