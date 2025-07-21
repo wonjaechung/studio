@@ -111,7 +111,7 @@ export default function Home() {
     function renderCalculator() {
         if (!calculatorDisplay) return;
         let historyHTML = '<div class="calculator-display">';
-        appState.calculator.history.forEach((entry: any) => {
+        appState.calculator.history.slice().reverse().forEach((entry: any) => {
             historyHTML += `<div class="calc-entry">
                 <div class="calc-input">&gt; ${entry.input}</div>
                 <div class="calc-output">${entry.output}</div>
@@ -368,14 +368,13 @@ export default function Home() {
 
         graphPlotDiv!.addEventListener('dragstart', (e: DragEvent) => {
             if (graphPlotDiv!.getAttribute('draggable') !== 'true' || !graphPlotDiv!.querySelector('.js-plotly-plot')) {
-                 e.preventDefault();
-                 return;
+                e.preventDefault();
+                return;
             }
             (window as any).Plotly.toImage(graphPlotDiv, {format: 'png', width: 800, height: 600})
                 .then(function(dataUrl: string) {
                     if (e.dataTransfer) {
-                       e.dataTransfer.setData('text/uri-list', dataUrl);
-                       e.dataTransfer.setData('text/html', `<img src="${dataUrl}">`);
+                        e.dataTransfer.setData('DownloadURL', ['image/png', 'graph.png', dataUrl].join(':'));
                     }
                 })
                 .catch(function(err: any){
@@ -390,7 +389,7 @@ export default function Home() {
                 appState.calculator.history.slice().reverse().forEach((entry: any) => {
                     textHistory += `> ${entry.input}\n${entry.output}\n`;
                     if (entry.explanation) {
-                        textHistory += `\n[Explanation]\n${entry.explanation}\n`;
+                        textHistory += `\n[Explanation]\n${entry.explanation.replace(/<br>/g, "\n")}\n`;
                     }
                     textHistory += "\n-----------------------------------------\n";
                 });
@@ -602,7 +601,7 @@ export default function Home() {
         #calculator-content { display: flex; flex-direction: column; font-family: 'Source Code Pro', monospace; }
         #calculator-display { flex-grow: 1; overflow-y: auto; margin-bottom: 0.5rem; }
         #calculator-display[draggable="true"] { cursor: grab; }
-        .calculator-display { display: flex; flex-direction: column-reverse; }
+        .calculator-display { display: flex; flex-direction: column; }
         .calc-entry { margin-bottom: 1rem; }
         .calc-input { color: hsl(var(--muted-foreground)); word-break: break-all; }
         .calc-output { text-align: right; font-weight: bold; font-size: 1.125rem; color: hsl(var(--foreground)); white-space: pre-wrap; word-break: break-all; }
