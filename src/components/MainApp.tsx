@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import type { AppState, ModalConfig, Question } from '@/lib/types';
+import type { AppState, ModalConfig, Question, SpreadsheetColumn } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { generateExplanation } from '@/ai/flows/generate-explanation';
 import { statsQuestions } from '@/lib/questions';
@@ -191,7 +191,6 @@ export function MainApp() {
         const studyHours = [1, 1.5, 1.8, 2, 2.5, 3, 3.2, 3.8, 4, 4.5, 5, 5.5, 6];
         const examScores = [65, 68, 70, 75, 72, 80, 85, 88, 85, 92, 95, 98, 94];
         setState(prev => ({...prev, spreadsheet: {...initialState.spreadsheet, columns: [], isDataLoaded: true}}));
-        // We call addDataColumn sequentially, which is fine with React's batching
         addDataColumn('hours', studyHours);
         addDataColumn('score', examScores);
         addHistoryEntry({ input: command, output: "Success", explanation: "Sample dataset loaded into the spreadsheet." });

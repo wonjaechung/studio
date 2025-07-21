@@ -54,7 +54,7 @@ export function SpreadsheetPanel({ state, setState, onMenuClick, onClearClick }:
   const handleMouseDown = (e: React.MouseEvent<HTMLTableCellElement>) => {
     const col = parseInt(e.currentTarget.dataset.col || '-1');
     const row = parseInt(e.currentTarget.dataset.row || '-1');
-    if (col === -1) return;
+    if (col === -1 && row === -1) return; // Ignore top-left corner
     
     setState({
         isEditing: false,
@@ -69,7 +69,7 @@ export function SpreadsheetPanel({ state, setState, onMenuClick, onClearClick }:
     if (!state.isSelecting) return;
     const col = parseInt(e.currentTarget.dataset.col || '-1');
     const row = parseInt(e.currentTarget.dataset.row || '-1');
-    if (col === -1) return;
+    if (col === -1 && row === -1) return;
 
     if (state.selectionEnd?.col !== col || state.selectionEnd?.row !== row) {
         setState({ selectionEnd: { col, row } });
@@ -83,7 +83,7 @@ export function SpreadsheetPanel({ state, setState, onMenuClick, onClearClick }:
   const handleDoubleClick = (e: React.MouseEvent<HTMLTableCellElement>) => {
     const col = parseInt(e.currentTarget.dataset.col || '-1');
     const row = parseInt(e.currentTarget.dataset.row || '-1');
-    if (col === -1) return;
+    if ((col === -1 && row === -1)) return;
     
     const value = row === -1 
         ? (columns[col]?.name || '') 
@@ -134,7 +134,14 @@ export function SpreadsheetPanel({ state, setState, onMenuClick, onClearClick }:
         if(columns[i]?.name) colIndices.push(i);
     }
     
-    if (colIndices.length === 0 || colIndices.length > 2) {
+    if (colIndices.length > 2) {
+        // This should be handled by a modal/toast in a real app
+        console.warn("Can only drag up to two named columns.");
+        e.preventDefault();
+        return;
+    }
+    if (colIndices.length === 0) {
+        console.warn("Please select named columns to drag.");
         e.preventDefault();
         return;
     }
@@ -178,14 +185,14 @@ export function SpreadsheetPanel({ state, setState, onMenuClick, onClearClick }:
             <table className="w-full border-collapse text-sm font-code">
               <thead className="sticky top-0 z-10 bg-card">
                 <tr>
-                  <th className="sticky left-0 z-20 bg-card p-2 border-r border-b w-12 min-w-12"></th>
+                  <th className="sticky left-0 z-20 bg-card p-2 border-r border-b w-12 min-w-12" data-col={-1} data-row={-1}></th>
                   {Array.from({ length: numCols }).map((_, c) => {
                       const col = columns[c];
                       const colName = col ? (col.formula ? `=${col.formula}` : col.name) : String.fromCharCode(65 + c);
                       const inSelection = selectionStart && selectionEnd && c >= Math.min(selectionStart.col, selectionEnd.col) && c <= Math.max(selectionStart.col, selectionEnd.col);
                       return (
                           <th key={c} data-col={c} data-row={-1}
-                              className={cn("p-2 border-b border-r text-center font-semibold cursor-pointer select-none", inSelection && col?.name && "bg-primary/50", activeCell.col === c && "bg-primary/70")}
+                              className={cn("p-2 border-b border-r text-center font-semibold cursor-pointer select-none", inSelection && col?.name && "bg-primary/50", activeCell.col === c && activeCell.row === -1 && "bg-primary/70", "col-header")}
                               draggable={inSelection && !!columns[c]?.name}
                               onDragStart={handleDragStart}
                               onDragEnd={(e) => e.currentTarget.classList.remove('opacity-50', 'bg-primary')}
@@ -199,7 +206,7 @@ export function SpreadsheetPanel({ state, setState, onMenuClick, onClearClick }:
               <tbody onMouseMove={(e) => e.target instanceof HTMLTableCellElement && handleMouseMove(e)}>
                 {Array.from({ length: numRows }).map((_, r) => (
                   <tr key={r}>
-                    <td className="sticky left-0 bg-card p-2 border-r border-b text-center text-muted-foreground select-none w-12 min-w-12">{r + 1}</td>
+                    <td className="sticky left-0 bg-card p-2 border-r border-b text-center text-muted-foreground select-none w-12 min-w-12" data-col={-1} data-row={r}>{r + 1}</td>
                     {Array.from({ length: numCols }).map((_, c) => {
                       const cellValue = columns[c]?.data[r] ?? '';
                       let inSelection = false;
@@ -251,5 +258,3 @@ export function SpreadsheetPanel({ state, setState, onMenuClick, onClearClick }:
     </Card>
   );
 }
-
-    
