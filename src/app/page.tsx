@@ -339,6 +339,24 @@ export default function Home() {
         const display = calculatorDisplay!;
         display.setAttribute('draggable', isDraggable.toString());
     }
+    
+    async function setGraphDraggable(isDraggable: boolean) {
+        if (isDraggable && graphPlotDiv!.querySelector('.js-plotly-plot')) {
+            try {
+                const dataUrl = await (window as any).Plotly.toImage(graphPlotDiv, { format: 'png', width: 800, height: 600 });
+                graphPlotDiv!.setAttribute('draggable', 'true');
+                graphPlotDiv!.dataset.dragUrl = dataUrl;
+            } catch (err) {
+                console.error(err);
+                showMessageModal("Could not create graph image for export.");
+                (exportGraphToggle as HTMLInputElement).checked = false;
+                graphPlotDiv!.setAttribute('draggable', 'false');
+            }
+        } else {
+            graphPlotDiv!.setAttribute('draggable', 'false');
+            delete graphPlotDiv!.dataset.dragUrl;
+        }
+    }
 
     // --- INITIALIZATION ---
     function init() {
@@ -363,24 +381,16 @@ export default function Home() {
         
         exportGraphToggle!.addEventListener('change', (e) => {
             const isChecked = (e.target as HTMLInputElement).checked;
-            graphPlotDiv!.setAttribute('draggable', isChecked.toString());
+            setGraphDraggable(isChecked);
         });
 
         graphPlotDiv!.addEventListener('dragstart', (e: DragEvent) => {
-            if (graphPlotDiv!.getAttribute('draggable') !== 'true' || !graphPlotDiv!.querySelector('.js-plotly-plot')) {
+            const dataUrl = graphPlotDiv!.dataset.dragUrl;
+            if (graphPlotDiv!.getAttribute('draggable') !== 'true' || !dataUrl) {
                 e.preventDefault();
                 return;
             }
-            (window as any).Plotly.toImage(graphPlotDiv, {format: 'png', width: 800, height: 600})
-                .then(function(dataUrl: string) {
-                    if (e.dataTransfer) {
-                        e.dataTransfer.setData('DownloadURL', ['image/png', 'graph.png', dataUrl].join(':'));
-                    }
-                })
-                .catch(function(err: any){
-                    console.error(err);
-                    showMessageModal("Could not export graph as image.");
-                });
+            e.dataTransfer!.setData('DownloadURL', `image/png:graph.png:${dataUrl}`);
         });
 
         calculatorDisplay!.addEventListener('dragstart', (e: DragEvent) => {
