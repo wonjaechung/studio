@@ -269,7 +269,7 @@ export default function Home() {
             addDataColumn('hours', studyHours);
             addDataColumn('score', examScores);
             renderSpreadsheet(); appState.spreadsheet.isDataLoaded = true;
-            addHistoryEntry({ input: expression, output: "Success: Sample data loaded." });
+            addHistoryEntry({ input: "Import", output: "Success: Sample data loaded." });
             commandHandled = true;
         } else if (expression === 'df.head()') {
             if (appState.spreadsheet.isDataLoaded) {
@@ -330,6 +330,7 @@ export default function Home() {
         sqlToggle!.addEventListener('change', () => { sqlInstructions!.classList.remove('hidden'); pythonInstructions!.classList.add('hidden'); });
 
         // Initial render
+        appState.calculator.history.push({ input: 'Welcome to InsightFlow!', output: 'Enter expressions, import data, or use the menu to start.' });
         renderCalculator();
         renderSpreadsheet();
         plotDefault();
@@ -384,7 +385,7 @@ export default function Home() {
                 <h2 className="panel-title">Viewer</h2>
             </div>
             <div id="graphing-content" className="panel-content !p-2 flex flex-col">
-                <div id="graph-plot" className="flex-grow flex items-center justify-center text-muted-foreground">Drop columns here to plot data</div>
+                <div id="graph-plot" className="flex-grow flex items-center justify-center text-muted-foreground min-w-0">Drop columns here to plot data</div>
                 <div id="graph-context-menu" className="hidden"></div>
             </div>
         </div>
@@ -530,7 +531,17 @@ export default function Home() {
         .spreadsheet-table input { background: transparent; border: none; color: inherit; width: 100%; text-align: right; outline: none; font-family: 'Source Code Pro', monospace; }
 
         /* Graphing Styles */
-        #graph-plot { flex-grow: 1; border-radius: 0.5rem; min-height: 0;}
+        #graphing-content {
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+        }
+        #graph-plot { 
+          flex-grow: 1; 
+          border-radius: 0.5rem; 
+          min-height: 0;
+          min-width: 0;
+        }
         #graph-context-menu {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background-color: hsla(var(--card), 0.9); backdrop-filter: blur(8px);
