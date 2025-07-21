@@ -6,7 +6,6 @@ import type { GraphingState, Column } from '@/lib/types';
 import * as stats from '@/lib/stats';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 
 // Dynamically import Plotly to avoid SSR issues
@@ -16,7 +15,7 @@ interface GraphingPanelProps {
   graphingState: GraphingState;
   setGraphingState: (updater: (prevState: GraphingState) => GraphingState) => void;
   spreadsheetColumns: Column[];
-  getColumnData: (name: string) => number[];
+  getColumnData: (name: string) => (string | number)[];
 }
 
 export default function GraphingPanel({
@@ -34,24 +33,44 @@ export default function GraphingPanel({
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    setGraphingState(prev => ({...prev, isDragging: false}));
-    const indicesStr = e.dataTransfer.getData('application/json');
-    if (indicesStr) {
-      const indices = JSON.parse(indicesStr);
-      if (Array.isArray(indices) && indices.length > 0 && indices.length <= 2) {
-        setGraphingState(prev => ({...prev, pendingPlot: { indices }}));
-      }
+    setGraphingState(prev => ({ ...prev, isDragging: false }));
+    try {
+        const data = e.dataTransfer.getData('application/json');
+        if (!data) return;
+        const droppedIndices = JSON.parse(data);
+
+        // This is the key logic from the original HTML file.
+        // It combines existing pending columns with new ones.
+        const existingIndices = graphingState.pendingPlot?.indices || [];
+        const combined = [...new Set([...existingIndices, ...droppedIndices])];
+
+        if (combined.length > 2) {
+            toast({ title: 'You can only plot up to two variables at a time.', variant: 'destructive' });
+            return;
+        }
+
+        if (combined.length > 0) {
+            setGraphingState(prev => ({ ...prev, pendingPlot: { indices: combined } }));
+        }
+    } catch (error) {
+        console.error("Failed to parse dropped data:", error);
+        toast({ title: 'Failed to process dropped data.', variant: 'destructive' });
     }
   };
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    setGraphingState(prev => ({...prev, isDragging: true}));
+    e.dataTransfer.dropEffect = 'copy';
+    if (!graphingState.isDragging) {
+      setGraphingState(prev => ({...prev, isDragging: true}));
+    }
   };
 
   const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setGraphingState(prev => ({...prev, isDragging: false}));
+    // Check if the relatedTarget (where the mouse is going) is outside the panel
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+        setGraphingState(prev => ({...prev, isDragging: false}));
+    }
   };
 
   const handlePlotSelection = (plotType: 'histogram' | 'boxplot' | 'scatter') => {
@@ -60,7 +79,7 @@ export default function GraphingPanel({
 
       if (plotType === 'histogram' && indices.length === 1) {
           const col = spreadsheetColumns[indices[0]];
-          const data = getColumnData(col.name);
+          const data = getColumnData(col.name).map(Number).filter(n => !isNaN(n));
           setGraphingState(prev => ({
               ...prev,
               plotType: 'histogram',
@@ -70,19 +89,19 @@ export default function GraphingPanel({
           }));
       } else if (plotType === 'boxplot' && indices.length === 1) {
           const col = spreadsheetColumns[indices[0]];
-          const data = getColumnData(col.name);
+          const data = getColumnData(col.name).map(Number).filter(n => !isNaN(n));
            setGraphingState(prev => ({
               ...prev,
               plotType: 'boxplot',
-              plotData: [{ y: data, type: 'box', name: col.name }],
+              plotData: [{ y: data, type: 'box', name: col.name, marker: { color: '#5DADE2' } }],
               plotLayout: { title: `Box Plot of ${col.name}` },
               pendingPlot: null,
           }));
       } else if (plotType === 'scatter' && indices.length === 2) {
           const col1 = spreadsheetColumns[indices[0]];
           const col2 = spreadsheetColumns[indices[1]];
-          const xData = getColumnData(col1.name);
-          const yData = getColumnData(col2.name);
+          const xData = getColumnData(col1.name).map(Number).filter(n => !isNaN(n));
+          const yData = getColumnData(col2.name).map(Number).filter(n => !isNaN(n));
           
           if (xData.length < 2 || yData.length < 2 || xData.length !== yData.length) {
             toast({ title: 'Cannot create scatter plot. X and Y lists must have the same number of numerical data points (at least 2).', variant: "destructive" });
@@ -93,29 +112,31 @@ export default function GraphingPanel({
           const xRange = [Math.min(...xData), Math.max(...xData)];
           const yRange = xRange.map(x => a + b * x);
           
-          const scatterTrace = { x: xData, y: yData, mode: 'markers', type: 'scatter', name: 'Data' };
-          const lineTrace = { x: xRange, y: yRange, mode: 'lines', type: 'scatter', name: 'Fit' };
+          const scatterTrace = { x: xData, y: yData, mode: 'markers', type: 'scatter', name: 'Data', marker: { color: '#F59E0B' } };
+          const lineTrace = { x: xRange, y: yRange, mode: 'lines', type: 'scatter', name: 'Fit', line: { color: '#EF4444' } };
 
            setGraphingState(prev => ({
               ...prev,
               plotType: 'scatter',
               plotData: [scatterTrace, lineTrace],
-              plotLayout: { title: `${col1.name} vs. ${col2.name} (r²=${(r*r).toFixed(3)})`, xaxis: {title: col1.name}, yaxis: {title: col2.name} },
+              plotLayout: { title: `<b>${col1.name} vs. ${col2.name}</b><br>ŷ = ${a.toFixed(3)} + ${b.toFixed(3)}x | r²=${(r*r).toFixed(3)}`, xaxis: {title: col1.name}, yaxis: {title: col2.name} },
               pendingPlot: null,
           }));
       }
   };
 
   const cancelPlotSelection = () => {
-    setGraphingState(prev => ({ ...prev, pendingPlot: null }));
+    setGraphingState(prev => ({ ...prev, pendingPlot: null, isDragging: false }));
   };
 
   const plotlyLayout = {
     paper_bgcolor: 'hsl(var(--card))',
     plot_bgcolor: 'hsl(var(--card))',
     font: { color: 'hsl(var(--foreground))' },
-    xaxis: { gridcolor: 'hsl(var(--border))' },
-    yaxis: { gridcolor: 'hsl(var(--border))' },
+    xaxis: { gridcolor: 'hsl(var(--border))', zerolinecolor: '#4B5563' },
+    yaxis: { gridcolor: 'hsl(var(--border))', zerolinecolor: '#4B5563' },
+    margin: { l: 50, r: 20, b: 40, t: 40 },
+    showlegend: false,
     autosize: true,
   };
 
@@ -140,7 +161,7 @@ export default function GraphingPanel({
   
   return (
     <div 
-        className={`h-full w-full relative transition-all duration-300 ${graphingState.isDragging ? 'bg-primary/10' : ''}`}
+        className={`h-full w-full relative transition-all duration-300 ${graphingState.isDragging ? 'bg-primary/10 border-2 border-dashed border-primary' : ''}`}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -149,12 +170,7 @@ export default function GraphingPanel({
         <CardHeader>
           <CardTitle className="text-base">Viewer</CardTitle>
         </CardHeader>
-        <CardContent className="flex-grow p-2 relative">
-            {graphingState.isDragging && 
-              <div className="absolute inset-2 z-10 border-2 border-dashed border-primary rounded-lg flex items-center justify-center">
-                  <p className="text-primary font-semibold">Drop here to plot</p>
-              </div>
-            }
+        <CardContent className="flex-grow p-2 pt-0 relative">
           {graphingState.pendingPlot && (
               <div className="absolute inset-0 z-20 bg-card/80 backdrop-blur-sm flex items-center justify-center">
                   <div className="bg-background border p-6 rounded-lg shadow-lg text-center">
@@ -162,7 +178,7 @@ export default function GraphingPanel({
                       <p className="text-sm text-muted-foreground mb-4">
                           {graphingState.pendingPlot.indices.length === 1 ? 
                             `Plot for column: ${spreadsheetColumns[graphingState.pendingPlot.indices[0]].name}` :
-                            `Plot for columns: ${spreadsheetColumns[graphingState.pendingPlot.indices[0]].name} & ${spreadsheetColumns[graphingState.pendingPlot.indices[1]].name}`
+                            `Plot for columns: ${graphingState.pendingPlot.indices.map(i => spreadsheetColumns[i].name).join(' & ')}`
                           }
                       </p>
                       <div className="flex gap-2 justify-center">
