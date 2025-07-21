@@ -25,6 +25,9 @@ export default function Home() {
     const gameModeBtn = document.getElementById('btn-game-mode');
     const gameDisplay = document.getElementById('game-mode-display');
     const gameTimer = document.getElementById('game-timer');
+    const pivotToggle = document.getElementById('pivot-toggle');
+    const exportCalcToggle = document.getElementById('export-calc-toggle');
+
 
     // --- GLOBAL APP STATE ---
     let appState: any = {
@@ -282,7 +285,40 @@ export default function Home() {
         }
         (calculatorInput as HTMLInputElement).value = '';
     }
-    function handlePaste(e: any) { e.preventDefault(); const pastedText = e.clipboardData.getData('text/plain'); const rows = pastedText.split(/\r?\n/).filter((row: any) => row.trim() !== ''); const data = rows.map((row: any) => row.split('\t')); const { col: startCol, row: startRow } = appState.spreadsheet.activeCell; data.forEach((rowData: any, r: number) => { rowData.forEach((cellData: any, c: number) => { const targetRow = startRow + r; const targetCol = startCol + c; if (targetRow < 200) { if (targetCol >= appState.spreadsheet.columns.length) { addDataColumn(String.fromCharCode(65 + appState.spreadsheet.columns.length)); } onCellChange(targetCol, targetRow, cellData); } }); }); renderSpreadsheet(); }
+    function handlePaste(e: any) { 
+        e.preventDefault(); 
+        const pastedText = e.clipboardData.getData('text/plain'); 
+        const rows = pastedText.split(/\r?\n/).filter((row: any) => row.trim() !== ''); 
+        let data = rows.map((row: any) => row.split('\t')); 
+        const isPivotActive = (pivotToggle as HTMLInputElement).checked;
+
+        if (isPivotActive && data.length > 0) {
+            const transposedData: any[][] = [];
+            const numCols = data[0].length;
+            for (let c = 0; c < numCols; c++) {
+                transposedData[c] = [];
+                for (let r = 0; r < data.length; r++) {
+                    transposedData[c][r] = data[r][c];
+                }
+            }
+            data = transposedData;
+        }
+
+        const { col: startCol, row: startRow } = appState.spreadsheet.activeCell; 
+        data.forEach((rowData: any, r: number) => { 
+            rowData.forEach((cellData: any, c: number) => { 
+                const targetRow = startRow + r; 
+                const targetCol = startCol + c; 
+                if (targetRow < 200) { 
+                    while (targetCol >= appState.spreadsheet.columns.length) { 
+                        addDataColumn(String.fromCharCode(65 + appState.spreadsheet.columns.length), []); 
+                    } 
+                    onCellChange(targetCol, targetRow, cellData); 
+                } 
+            }); 
+        }); 
+        renderSpreadsheet(); 
+    }
     function onCellChange(col: any, row: any, value: any) { const numValue = parseFloat(value); appState.spreadsheet.columns[col].data[row] = isNaN(numValue) ? value : numValue; }
 
     // --- GAME MODE LOGIC ---
@@ -297,8 +333,11 @@ export default function Home() {
 
     // --- OTHER UTILS ---
     function renderDataFrameHead() { let tableHTML = '<div class="dataframe-table"><thead><tr>'; appState.spreadsheet.columns.forEach((col: any) => { if(col.name && !col.name.match(/^[A-Z]$/)) tableHTML += `<th>${col.name}</th>`; }); tableHTML += '</tr></thead><tbody>'; for (let i = 0; i < 5; i++) { tableHTML += '<tr>'; appState.spreadsheet.columns.forEach((col: any) => { if(col.name && !col.name.match(/^[A-Z]$/)) tableHTML += `<td>${col.data[i] || ''}</td>`; }); tableHTML += '</tr>'; } tableHTML += '</tbody></table>'; graphPlotDiv!.innerHTML = tableHTML; }
-    function copyCode(element: any) { navigator.clipboard.writeText(element.textContent); element.textContent = 'Copied!'; setTimeout(() => { element.textContent = "df = pd.read_csv('lab_data_1.csv')"; }, 1000); }
-    (window as any).copyCode = copyCode;
+    
+    function setCalculatorDraggable(isDraggable: boolean) {
+        const display = calculatorDisplay!;
+        display.setAttribute('draggable', isDraggable.toString());
+    }
 
     // --- INITIALIZATION ---
     function init() {
@@ -315,6 +354,29 @@ export default function Home() {
         calculatorInput!.addEventListener('keydown', (e) => { if(e.key === 'Enter') handleCalculatorInput(); });
         calculatorEnterBtn!.addEventListener('click', handleCalculatorInput);
         gameModeBtn!.addEventListener('click', toggleGameMode);
+
+        exportCalcToggle!.addEventListener('change', (e) => {
+            const isChecked = (e.target as HTMLInputElement).checked;
+            setCalculatorDraggable(isChecked);
+        });
+
+        calculatorDisplay!.addEventListener('dragstart', (e: DragEvent) => {
+            if ((exportCalcToggle as HTMLInputElement).checked) {
+                let textHistory = "Wonjae's AP Stat Lab - Console History\n=========================================\n\n";
+                appState.calculator.history.slice().reverse().forEach((entry: any) => {
+                    textHistory += `> ${entry.input}\n${entry.output}\n`;
+                    if (entry.explanation) {
+                        textHistory += `\n[Explanation]\n${entry.explanation}\n`;
+                    }
+                    textHistory += "\n-----------------------------------------\n";
+                });
+                e.dataTransfer!.setData('text/plain', textHistory);
+                e.dataTransfer!.effectAllowed = 'copy';
+            } else {
+                e.preventDefault();
+            }
+        });
+
         spreadsheetContainer!.addEventListener('dragstart', (e: DragEvent) => { if (!(e.target as HTMLElement).matches('th.col-header.in-selection')) { e.preventDefault(); return; } const { selectionStart, selectionEnd } = appState.spreadsheet; const minCol = Math.min(selectionStart!.col, selectionEnd!.col); const maxCol = Math.max(selectionEnd!.col, selectionStart!.col); let colIndices: number[] = []; for (let i = minCol; i <= maxCol; i++) { if(appState.spreadsheet.columns[i]?.name) colIndices.push(i); } if (colIndices.length === 0 || colIndices.length > 2) { showMessageModal("Drag one or two NAMED columns to plot."); e.preventDefault(); return; } e.dataTransfer!.setData('application/json', JSON.stringify(colIndices)); e.dataTransfer!.effectAllowed = 'copy'; });
         graphingPanel!.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer!.dropEffect = 'copy'; graphingPanel!.classList.add('drag-over'); });
         graphingPanel!.addEventListener('dragleave', () => { graphingPanel!.classList.remove('drag-over'); });
@@ -354,6 +416,13 @@ export default function Home() {
                 <h2 className="panel-title">Calculator / Console</h2>
                 <div id="game-controls" className="flex items-center gap-2">
                     <span id="game-timer" className="font-mono text-sm bg-background px-2 py-1 rounded-md hidden">00:00</span>
+                     <div className="export-toggle">
+                        <span>Export</span>
+                        <label className="switch">
+                            <input type="checkbox" id="export-calc-toggle"/>
+                            <span className="slider round"></span>
+                        </label>
+                    </div>
                     <button id="btn-menu" className="btn">Stats Menu</button>
                     <button id="btn-game-mode" className="btn">Game Mode</button>
                 </div>
@@ -382,6 +451,13 @@ export default function Home() {
             <div className="panel-header">
                 <h2 className="panel-title">Lists & Spreadsheet</h2>
                 <div className="flex items-center gap-4">
+                     <div className="export-toggle">
+                        <span>Pivot</span>
+                        <label className="switch">
+                            <input type="checkbox" id="pivot-toggle"/>
+                            <span className="slider round"></span>
+                        </label>
+                    </div>
                     <button id="btn-clear" className="btn">Clear Sheet</button>
                 </div>
             </div>
@@ -494,6 +570,7 @@ export default function Home() {
         /* Calculator Styles */
         #calculator-content { display: flex; flex-direction: column; font-family: 'Source Code Pro', monospace; }
         #calculator-display { flex-grow: 1; overflow-y: auto; margin-bottom: 0.5rem; }
+        #calculator-display[draggable="true"] { cursor: grab; }
         .calculator-display { display: flex; flex-direction: column-reverse; }
         .calc-entry { margin-bottom: 1rem; }
         .calc-input { color: hsl(var(--muted-foreground)); word-break: break-all; }
@@ -557,11 +634,17 @@ export default function Home() {
         .modal-field label { font-weight: 500; text-align: right; }
         .modal-field select, .modal-field input { background-color: hsl(var(--background)); border: 1px solid hsl(var(--border)); border-radius: 4px; padding: 4px 8px; color: hsl(var(--foreground)); width: 100%; }
         .modal-buttons { margin-top: 1.25rem; text-align: right; display: flex; gap: 0.5rem; justify-content: flex-end; }
-        .importer-toggle { display: flex; background-color: hsl(var(--secondary)); border-radius: 0.5rem; padding: 0.25rem; margin-bottom: 1rem; }
-        .importer-toggle label { flex: 1; text-align: center; padding: 0.25rem 0.5rem; border-radius: 0.375rem; cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif; font-size: 0.875rem;}
-        .importer-toggle input { display: none; }
-        .importer-toggle input:checked + label { background-color: hsl(var(--primary)); color: hsl(var(--primary-foreground)); font-weight: 600; }
-        .code-block { background-color: hsl(var(--secondary)); padding: 0.75rem; border-radius: 0.5rem; color: hsl(var(--foreground)); font-family: 'Source Code Pro', monospace; }
+        
+        .export-toggle { display: flex; align-items: center; gap: 0.5rem; color: hsl(var(--muted-foreground)); font-size: 0.875rem;}
+        .switch { position: relative; display: inline-block; width: 34px; height: 20px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: hsl(var(--secondary)); transition: .4s; }
+        .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; }
+        input:checked + .slider { background-color: hsl(var(--primary)); }
+        input:checked + .slider:before { transform: translateX(14px); }
+        .slider.round { border-radius: 20px; }
+        .slider.round:before { border-radius: 50%; }
+
         .dataframe-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; font-family: 'Inter', sans-serif; background-color: hsl(var(--secondary)); border-radius: 0.5rem; overflow: hidden; }
         .dataframe-table th, .dataframe-table td { border: 1px solid hsl(var(--border)); padding: 0.5rem; text-align: left; }
         .dataframe-table th { background-color: hsl(var(--muted)); font-weight: 600; }
@@ -569,3 +652,5 @@ export default function Home() {
     </>
   );
 }
+
+    
