@@ -22,10 +22,6 @@ export default function Home() {
     const graphContextMenu = document.getElementById('graph-context-menu');
     const menuBtn = document.getElementById('btn-menu');
     const clearBtn = document.getElementById('btn-clear');
-    const pythonToggle = document.getElementById('importer-python') as HTMLInputElement;
-    const sqlToggle = document.getElementById('importer-sql') as HTMLInputElement;
-    const pythonInstructions = document.getElementById('python-instructions');
-    const sqlInstructions = document.getElementById('sql-instructions');
     const gameModeBtn = document.getElementById('btn-game-mode');
     const gameDisplay = document.getElementById('game-mode-display');
     const gameTimer = document.getElementById('game-timer');
@@ -238,7 +234,7 @@ export default function Home() {
             { label: 'Normal Cdf', action: 'showNormalCdfModal' }, { label: 'Inverse Normal', action: 'showInvNormModal' },
             { label: 'Binomial Pdf', action: 'showBinomPdfModal' }, { label: 'Binomial Cdf', action: 'showBinomCdfModal' },
         ];
-        let modalHTML = `<div class="modal" id="stats-menu"><div class="modal-title">Statistics & Distributions</div>
+        let modalHTML = `<div class="modal" id="stats-menu"><div class="modal-title">Stats Menu</div>
             <div class="grid grid-cols-2 gap-3 my-4">`;
         menuItems.forEach(item => { modalHTML += `<button class="btn" data-action="${item.action}">${item.label}</button>`; });
         modalHTML += `</div><div class="modal-buttons"><button class="btn btn-primary" data-action="closeModal">Close</button></div></div>`;
@@ -262,14 +258,14 @@ export default function Home() {
         let commandHandled = false;
         if (appState.game.isActive) { commandHandled = handleGameAnswer(expression); }
         if (commandHandled) { /* Handled by game logic */ }
-        else if (expression === "df = pd.read_csv('lab_data_1.csv')" || expression === "SELECT study_hours, exam_score FROM student_performance;") {
+        else if (expression === "df = pd.read_csv('lab_data_1.csv')") {
             actions.clearSpreadsheet();
             const studyHours = [1, 1.5, 1.8, 2, 2.5, 3, 3.2, 3.8, 4, 4.5, 5, 5.5, 6];
             const examScores = [65, 68, 70, 75, 72, 80, 85, 88, 85, 92, 95, 98, 94];
             addDataColumn('hours', studyHours);
             addDataColumn('score', examScores);
             renderSpreadsheet(); appState.spreadsheet.isDataLoaded = true;
-            addHistoryEntry({ input: "Import", output: "Success: Sample data loaded." });
+            addHistoryEntry({ input: expression, output: "Success: Sample data loaded." });
             commandHandled = true;
         } else if (expression === 'df.head()') {
             if (appState.spreadsheet.isDataLoaded) {
@@ -326,11 +322,13 @@ export default function Home() {
         graphContextMenu!.addEventListener('click', (e) => { if ((e.target as HTMLElement).matches('[data-plottype]')) { const type = (e.target as HTMLElement).dataset.plottype; if (appState.graphing.pendingPlot) { const { indices } = appState.graphing.pendingPlot; if (type === 'histogram') plotHistogram(indices[0]); else if (type === 'boxplot') plotBoxPlot(indices[0]); else if (type === 'scatter') plotScatter(indices[0], indices[1]); } graphContextMenu!.classList.add('hidden'); appState.graphing.pendingPlot = null; } });
         graphContextMenu!.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); });
         graphContextMenu!.addEventListener('drop', (e: DragEvent) => { e.preventDefault(); e.stopPropagation(); const newlyDroppedIndices = JSON.parse(e.dataTransfer!.getData('application/json')); const existingIndices = appState.graphing.pendingPlot.indices; const combined = [...new Set([...existingIndices, ...newlyDroppedIndices])]; if (combined.length > 2) { showMessageModal("You can only plot up to two variables."); return; } showPlotTypeMenu(combined); });
-        pythonToggle!.addEventListener('change', () => { pythonInstructions!.classList.remove('hidden'); sqlInstructions!.classList.add('hidden'); });
-        sqlToggle!.addEventListener('change', () => { sqlInstructions!.classList.remove('hidden'); pythonInstructions!.classList.add('hidden'); });
 
         // Initial render
-        appState.calculator.history.push({ input: 'Welcome to InsightFlow!', output: 'Enter expressions, import data, or use the menu to start.' });
+        appState.calculator.history.push({ 
+            input: 'Welcome to Wonjae\'s AP Stat Lab!', 
+            output: `<span class="text-base">Enter expressions, import data, or use the menu to start.</span>
+                     <div class="text-sm text-muted-foreground mt-2">&gt; To import sample data, type or paste: <code class="bg-muted px-1 py-0.5 rounded">df = pd.read_csv('lab_data_1.csv')</code></div>`
+        });
         renderCalculator();
         renderSpreadsheet();
         plotDefault();
@@ -343,21 +341,12 @@ export default function Home() {
     <>
       <div className="main-grid">
         <div id="importer" className="panel">
-            <div className="panel-header"><h2 className="panel-title">Import Lab Data (Simulation)</h2></div>
-            <div className="panel-content">
-                <div className="importer-toggle">
-                    <input type="radio" name="importer-type" id="importer-python" defaultChecked/>
-                    <label htmlFor="importer-python">Python (Pandas)</label>
-                    <input type="radio" name="importer-type" id="importer-sql"/>
-                    <label htmlFor="importer-sql">SQL</label>
-                </div>
-                <div id="python-instructions">
-                    <p className="text-sm mb-2 text-muted-foreground">Copy and run this command in the console below:</p>
-                    <code className="code-block" onClick={(e) => (window as any).copyCode(e.target)}>df = pd.read_csv('lab_data_1.csv')</code>
-                </div>
-                <div id="sql-instructions" className="hidden">
-                    <p className="text-sm mb-2 text-muted-foreground">Copy and run this query in the console below:</p>
-                    <code className="code-block" onClick={(e) => (window as any).copyCode(e.target)}>SELECT study_hours, exam_score FROM student_performance;</code>
+            <div className="panel-content flex items-center justify-center">
+                <div className="text-center">
+                    <div className="flex items-center justify-center">
+                        <span className="text-8xl font-bold text-primary" style={{fontFamily: "'Source Code Pro', monospace"}}>1J</span>
+                        <h1 className="text-4xl font-semibold ml-4">AP Stat Lab</h1>
+                    </div>
                 </div>
             </div>
         </div>
@@ -367,6 +356,7 @@ export default function Home() {
                 <h2 className="panel-title">Calculator / Console</h2>
                 <div id="game-controls" className="flex items-center gap-2">
                     <span id="game-timer" className="font-mono text-sm bg-background px-2 py-1 rounded-md hidden">00:00</span>
+                    <button id="btn-menu" className="btn">Stats Menu</button>
                     <button id="btn-game-mode" className="btn">Game Mode</button>
                 </div>
             </div>
@@ -394,7 +384,6 @@ export default function Home() {
             <div className="panel-header">
                 <h2 className="panel-title">Lists & Spreadsheet</h2>
                 <div className="flex items-center gap-4">
-                    <button id="btn-menu" className="btn">Menu</button>
                     <button id="btn-clear" className="btn">Clear Sheet</button>
                 </div>
             </div>
@@ -455,7 +444,7 @@ export default function Home() {
         .main-grid {
             display: grid;
             grid-template-columns: 1fr 1.5fr;
-            grid-template-rows: auto minmax(0, 2fr) minmax(0, 1.5fr);
+            grid-template-rows: 150px minmax(0, 2fr) minmax(0, 1.5fr);
             gap: 1rem;
             height: 100vh;
             padding: 1rem;
