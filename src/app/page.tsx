@@ -27,6 +27,7 @@ export default function Home() {
     const gameTimer = document.getElementById('game-timer');
     const pivotToggle = document.getElementById('pivot-toggle');
     const exportCalcToggle = document.getElementById('export-calc-toggle');
+    const exportGraphToggle = document.getElementById('export-graph-toggle');
 
 
     // --- GLOBAL APP STATE ---
@@ -285,11 +286,11 @@ export default function Home() {
         }
         (calculatorInput as HTMLInputElement).value = '';
     }
-    function handlePaste(e: any) { 
-        e.preventDefault(); 
-        const pastedText = e.clipboardData.getData('text/plain'); 
-        const rows = pastedText.split(/\r?\n/).filter((row: any) => row.trim() !== ''); 
-        let data = rows.map((row: any) => row.split('\t')); 
+    function handlePaste(e: any) {
+        e.preventDefault();
+        const pastedText = e.clipboardData.getData('text/plain');
+        const rows = pastedText.split(/\r?\n/).filter((row: any) => row.trim() !== '');
+        let data = rows.map((row: any) => row.split('\t'));
         const isPivotActive = (pivotToggle as HTMLInputElement).checked;
 
         if (isPivotActive && data.length > 0) {
@@ -304,20 +305,20 @@ export default function Home() {
             data = transposedData;
         }
 
-        const { col: startCol, row: startRow } = appState.spreadsheet.activeCell; 
-        data.forEach((rowData: any, r: number) => { 
-            rowData.forEach((cellData: any, c: number) => { 
-                const targetRow = startRow + r; 
-                const targetCol = startCol + c; 
-                if (targetRow < 200) { 
-                    while (targetCol >= appState.spreadsheet.columns.length) { 
-                        addDataColumn(String.fromCharCode(65 + appState.spreadsheet.columns.length), []); 
-                    } 
-                    onCellChange(targetCol, targetRow, cellData); 
-                } 
-            }); 
-        }); 
-        renderSpreadsheet(); 
+        const { col: startCol, row: startRow } = appState.spreadsheet.activeCell;
+        data.forEach((rowData: any, r: number) => {
+            rowData.forEach((cellData: any, c: number) => {
+                const targetRow = startRow + r;
+                const targetCol = startCol + c;
+                if (targetRow < 200) {
+                    while (targetCol >= appState.spreadsheet.columns.length) {
+                        addDataColumn(String.fromCharCode(65 + appState.spreadsheet.columns.length), []);
+                    }
+                    onCellChange(targetCol, targetRow, cellData);
+                }
+            });
+        });
+        renderSpreadsheet();
     }
     function onCellChange(col: any, row: any, value: any) { const numValue = parseFloat(value); appState.spreadsheet.columns[col].data[row] = isNaN(numValue) ? value : numValue; }
 
@@ -358,6 +359,29 @@ export default function Home() {
         exportCalcToggle!.addEventListener('change', (e) => {
             const isChecked = (e.target as HTMLInputElement).checked;
             setCalculatorDraggable(isChecked);
+        });
+        
+        exportGraphToggle!.addEventListener('change', (e) => {
+            const isChecked = (e.target as HTMLInputElement).checked;
+            graphPlotDiv!.setAttribute('draggable', isChecked.toString());
+        });
+
+        graphPlotDiv!.addEventListener('dragstart', (e: DragEvent) => {
+            if (graphPlotDiv!.getAttribute('draggable') !== 'true' || !graphPlotDiv!.querySelector('.js-plotly-plot')) {
+                 e.preventDefault();
+                 return;
+            }
+            (window as any).Plotly.toImage(graphPlotDiv, {format: 'png', width: 800, height: 600})
+                .then(function(dataUrl: string) {
+                    if (e.dataTransfer) {
+                       e.dataTransfer.setData('text/uri-list', dataUrl);
+                       e.dataTransfer.setData('text/html', `<img src="${dataUrl}">`);
+                    }
+                })
+                .catch(function(err: any){
+                    console.error(err);
+                    showMessageModal("Could not export graph as image.");
+                });
         });
 
         calculatorDisplay!.addEventListener('dragstart', (e: DragEvent) => {
@@ -440,6 +464,13 @@ export default function Home() {
         <div id="graphing" className="panel">
             <div className="panel-header">
                 <h2 className="panel-title">Viewer</h2>
+                 <div className="export-toggle">
+                    <span>Export</span>
+                    <label className="switch">
+                        <input type="checkbox" id="export-graph-toggle"/>
+                        <span className="slider round"></span>
+                    </label>
+                </div>
             </div>
             <div id="graphing-content" className="panel-content !p-2 flex flex-col">
                 <div id="graph-plot" className="flex-grow flex items-center justify-center text-muted-foreground min-w-0">Drop columns here to plot data</div>
@@ -606,6 +637,7 @@ export default function Home() {
           min-height: 0;
           min-width: 0;
         }
+        #graph-plot[draggable="true"] { cursor: grab; }
         #graph-context-menu {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background-color: hsla(var(--card), 0.9); backdrop-filter: blur(8px);
@@ -652,5 +684,3 @@ export default function Home() {
     </>
   );
 }
-
-    
