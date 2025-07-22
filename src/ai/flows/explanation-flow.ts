@@ -39,7 +39,7 @@ The available options were:
 The user selected: "{{{userAnswer}}}"
 The correct answer is: "{{{correctAnswer}}}"
 
-Please generate an explanation in the following JSON format. The tone should be helpful and educational.
+Please generate an explanation in the following JSON format. The tone should be helpful and educational. If the user's answer is in Korean, respond in Korean.
 
 1.  **concept**: A short, catchy title for the core statistical concept. Start with a relevant emoji.
 2.  **isCorrect**: A boolean indicating if the user's answer was correct.

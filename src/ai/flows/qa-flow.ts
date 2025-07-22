@@ -30,7 +30,7 @@ A student has asked the following question in the console:
 Question: {{{question}}}
 ---
 
-Please provide a clear, concise, and helpful answer. If the question is in Korean, answer in Korean. Explain the concept as you would to a high school student studying for the AP exam.`,
+Please provide a clear, concise, and helpful answer. If the question is in Korean, answer in Korean. Handle informal language and slang (like 'ㅋ') naturally and conversationally. Explain the concept as you would to a high school student studying for the AP exam.`,
 });
 
 const qaFlow = ai.defineFlow(
