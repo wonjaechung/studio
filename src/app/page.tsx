@@ -184,27 +184,39 @@ export default function Home() {
         if(isEditing) { const input = spreadsheetContainer.querySelector('input'); if(input) { input.focus(); input.select(); } }
     }
     function addHistoryEntry(entry: any, id: string | null = null) {
-      if (id) {
-          const existingEntry = appState.calculator.history.find((e: any) => e.id === id);
-          if (existingEntry) {
-              Object.assign(existingEntry, entry, { id }); // Update existing entry
-          } else {
-              appState.calculator.history.unshift({ ...entry, id }); // Add new if not found
-          }
-      } else {
-          appState.calculator.history.unshift({ ...entry, id: `entry_${Date.now()}_${Math.random()}` });
-      }
-      renderCalculator();
-  }
+        const newEntry = {
+            id: id || `entry_${Date.now()}_${Math.random()}`,
+            ...entry,
+        };
+    
+        if (id) {
+            const index = appState.calculator.history.findIndex((e: any) => e.id === id);
+            if (index !== -1) {
+                appState.calculator.history[index] = { ...appState.calculator.history[index], ...newEntry };
+            } else {
+                appState.calculator.history.unshift(newEntry);
+            }
+        } else {
+            appState.calculator.history.unshift(newEntry);
+        }
+        renderCalculator();
+    }
+    
     function renderCalculator() {
         if (!calculatorDisplay) return;
         let historyHTML = '<div class="calculator-display">';
         appState.calculator.history.slice().reverse().forEach((entry: any) => {
-            historyHTML += `<div class="calc-entry">
-                <div class="calc-input">&gt; ${entry.input}</div>
-                <div class="calc-output">${entry.output}</div>
-                ${entry.explanation ? `<div class="calc-explanation">${entry.explanation}</div>` : ''}
-            </div>`;
+            historyHTML += `<div class="calc-entry">`;
+            if (entry.input) {
+                historyHTML += `<div class="calc-input">&gt; ${entry.input}</div>`;
+            }
+            if (entry.output) {
+                historyHTML += `<div class="calc-output">${entry.output}</div>`;
+            }
+            if (entry.explanation) {
+                historyHTML += `<div class="calc-explanation">${entry.explanation}</div>`;
+            }
+            historyHTML += `</div>`;
         });
         historyHTML += '</div>';
         calculatorDisplay.innerHTML = historyHTML;
@@ -386,44 +398,44 @@ export default function Home() {
                 datasets[match[1]]();
                 renderSpreadsheet();
                 appState.spreadsheet.isDataLoaded = true;
-                addHistoryEntry({ role: 'user', content: expression });
-                addHistoryEntry({ role: 'model', content: `Success: Sample data '${match[1]}' loaded.` });
+                addHistoryEntry({ input: expression });
+                addHistoryEntry({ output: `Success: Sample data '${match[1]}' loaded.` });
             } else {
-                 addHistoryEntry({ role: 'user', content: expression });
-                 addHistoryEntry({ role: 'model', content: `Error: Dataset not found.` });
+                 addHistoryEntry({ input: expression });
+                 addHistoryEntry({ output: `Error: Dataset not found.` });
             }
             commandHandled = true;
         } else if (expression === 'df.head()') {
             if (appState.spreadsheet.isDataLoaded) {
                 renderDataFrameHead();
-                 addHistoryEntry({ role: 'user', content: expression });
-                 addHistoryEntry({ role: 'model', content: "DataFrame head displayed in Viewer." });
+                 addHistoryEntry({ input: expression });
+                 addHistoryEntry({ output: "DataFrame head displayed in Viewer." });
             } else {
-                 addHistoryEntry({ role: 'user', content: expression });
-                 addHistoryEntry({ role: 'model', content: "Error: name 'df' is not defined." });
+                 addHistoryEntry({ input: expression });
+                 addHistoryEntry({ output: "Error: name 'df' is not defined." });
             }
             commandHandled = true;
         }
         if (!commandHandled) {
              try {
                 const result = (window as any).math.evaluate(expression);
-                addHistoryEntry({ role: 'user', content: expression });
-                addHistoryEntry({ role: 'model', content: (window as any).math.format(result, { precision: 14 }) });
+                addHistoryEntry({ input: expression });
+                addHistoryEntry({ output: (window as any).math.format(result, { precision: 14 }) });
             } catch (err) {
                 const qaId = `qa_${Date.now()}`;
-                addHistoryEntry({ role: 'user', content: expression });
-                addHistoryEntry({ role: 'model', content: "Thinking..." }, qaId);
+                addHistoryEntry({ input: expression });
+                addHistoryEntry({ output: "Thinking..." }, qaId);
                 const historyForAI = appState.calculator.history.map((entry: any) => ({
-                    role: entry.role,
-                    content: entry.input || entry.content,
+                    role: entry.input ? 'user' : 'model',
+                    content: entry.input || entry.output,
                 }));
                 answerQuestion({ history: historyForAI })
                     .then(response => {
-                        addHistoryEntry({ role: 'model', content: response.answer }, qaId);
+                        addHistoryEntry({ output: response.answer }, qaId);
                     })
                     .catch(error => {
                         console.error("Error answering question:", error);
-                        addHistoryEntry({ role: 'model', content: `Error: Could not process question.` }, qaId);
+                        addHistoryEntry({ output: `Error: Could not process question.` }, qaId);
                     });
             }
         }
@@ -469,7 +481,7 @@ export default function Home() {
     function toggleGameMode() { appState.game.isActive = !appState.game.isActive; if (appState.game.isActive) { startGame(); } else { stopGame(); } }
     function startGame() { appState.game = { ...appState.game, isActive: true, startTime: Date.now(), questionsAnswered: 0, correctAnswers: 0, isWaitingForAI: false }; gameTimer!.classList.remove('hidden'); appState.game.timerInterval = setInterval(updateGameTimer, 1000); nextQuestion(); }
     function stopGame() { if (appState.game.timerInterval) clearInterval(appState.game.timerInterval); appState.game.isActive = false; gameDisplay!.classList.add('hidden'); gameTimer!.classList.add('hidden'); }
-    function endGame() { const { correctAnswers } = appState.game; const scoreMessage = `Game Over! You scored ${correctAnswers} out of 5.`; addHistoryEntry({ role: 'user', content: "Game Finished" }); addHistoryEntry({ role: 'model', content: scoreMessage }); stopGame(); }
+    function endGame() { const { correctAnswers } = appState.game; const scoreMessage = `Game Over! You scored ${correctAnswers} out of 5.`; addHistoryEntry({ input: "Game Finished" }); addHistoryEntry({ output: scoreMessage }); stopGame(); }
     function updateGameTimer() { const elapsed = Math.floor((Date.now() - appState.game.startTime) / 1000); const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0'); const seconds = (elapsed % 60).toString().padStart(2, '0'); gameTimer!.textContent = `${minutes}:${seconds}`; }
     function nextQuestion() {
         if (!appState.game.isActive) return;
@@ -491,12 +503,10 @@ export default function Home() {
         
         const explanationId = `explanation_${Date.now()}`;
         addHistoryEntry({ 
-            role: 'user',
-            content: `Q${appState.game.questionsAnswered + 1}: ${selectedOption.text}`
+            input: `Q${appState.game.questionsAnswered + 1}: ${selectedOption.text}`
         });
         addHistoryEntry({ 
-            role: 'model',
-            content: selectedOption.isCorrect ? 'Correct!' : `Correct Answer: ${correctAnswer}`,
+            output: selectedOption.isCorrect ? 'Correct!' : `Correct Answer: ${correctAnswer}`,
             explanation: "Generating explanation with EXAONE..." 
         }, explanationId);
 
@@ -526,16 +536,14 @@ export default function Home() {
 
             // Update the specific history entry with the real explanation
             addHistoryEntry({ 
-                role: 'model',
-                content: explanation.isCorrect ? 'Correct!' : `Correct Answer: ${correctAnswer}`,
+                output: explanation.isCorrect ? 'Correct!' : `Correct Answer: ${correctAnswer}`,
                 explanation: explanationHTML 
             }, explanationId);
 
         }).catch(error => {
             console.error("Error generating explanation:", error);
             addHistoryEntry({ 
-                role: 'model',
-                content: 'Error generating explanation.' 
+                output: 'Error generating explanation.' 
             }, explanationId);
         });
 
@@ -660,8 +668,7 @@ export default function Home() {
 
         // Initial render
         addHistoryEntry({ 
-            role: 'model',
-            content: `Welcome to Wonjae's AP Stat Lab! <br>
+            output: `Welcome to Wonjae's AP Stat Lab! <br>
                      <span class="text-sm">Enter expressions, import data, or use the menu to start.</span>
                      <div class="text-xs text-muted-foreground mt-2">&gt; To import sample data, copy and run this command in the console below: <code class="bg-muted px-1 py-0.5 rounded">df = pd.read_csv('lab_data_1.csv')</code></div>`
         });
