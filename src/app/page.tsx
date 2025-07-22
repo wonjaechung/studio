@@ -307,7 +307,7 @@ export default function Home() {
         showTIntervalDataModal: () => renderModal({ title: 't-Interval (Data)', fields: [ { id: 'list', label: 'List', type: 'select' }, { id: 'clevel', label: 'C-Level', type:'number', value: '0.95' } ], buttons: [ { label: 'OK', action: 'runTIntervalFromData', class:'btn-primary' }, { label: 'Cancel', action: 'closeModal' } ] }),
         runTIntervalFromStats: () => { const mean = parseFloat((document.getElementById('mean') as HTMLInputElement).value); const sx = parseFloat((document.getElementById('sx') as HTMLInputElement).value); const n = parseInt((document.getElementById('n') as HTMLInputElement).value); const cLevel = parseFloat((document.getElementById('clevel') as HTMLInputElement).value); actions.runTInterval(mean, sx, n, cLevel); },
         runTIntervalFromData: () => { const listName = (document.getElementById('list') as HTMLInputElement).value; const cLevel = parseFloat((document.getElementById('clevel') as HTMLInputElement).value); const data = getColumnData(listName); if (data.length < 2) { showMessageModal("List must have >= 2 numbers."); return; } const mean = stats.mean(data); const sx = stats.stddev(data); const n = data.length; actions.runTInterval(mean, sx, n, cLevel); },
-        runTInterval(mean: number, sx: number, n: number, cLevel: number) { if ([mean,sx,n,cLevel].some(isNaN)) { showMessageModal("Invalid input."); return; } const df = n - 1; const alpha = 1 - cLevel; const tStar = stats.invT(1 - alpha / 2, df); const me = tStar * (sx / Math.sqrt(n)); const lower = mean - me; const upper = mean + me; addHistoryEntry({type: 'tInterval', input: `tInterval(${cLevel*100}%)`, output: `(${lower.toFixed(4)}, ${upper.toFixed(4)})`, data: {lower, upper, me, df, mean, sx, n}}); closeModal(); },
+        runTInterval(mean: number, sx: number, n: number, cLevel: number) { if ([mean,sx,n,cLevel].some(isNaN)) { showMessageModal("Invalid input."); return; } const df = n - 1; const alpha = 1 - cLevel; const tStar = Math.abs(stats.invT(alpha / 2, df)); const me = tStar * (sx / Math.sqrt(n)); const lower = mean - me; const upper = mean + me; addHistoryEntry({type: 'tInterval', input: `tInterval(${cLevel*100}%)`, output: `(${lower.toFixed(4)}, ${upper.toFixed(4)})`, data: {lower, upper, me, df, mean, sx, n}}); closeModal(); },
         showTTestModalChooser: () => renderModal({ title: 't-Test', fields: [ { id: 'inputMethod', label: 'Input Method', type: 'select', options: ['Data', 'Stats'] } ], buttons: [ { label: 'OK', action: 'chooseTTestModal', class:'btn-primary' }, { label: 'Cancel', action: 'closeModal' } ], requiresData: false }),
         chooseTTestModal: () => { const method = (document.getElementById('inputMethod') as HTMLInputElement).value; if (method === 'Stats') actions.showTTestStatsModal(); else actions.showTTestDataModal(); },
         showTTestStatsModal: () => renderModal({ title: 't-Test (Stats)', fields: [ { id: 'mu0', label: 'μ₀', type:'number' }, { id: 'mean', label: 'x̄', type:'number' }, { id: 'sx', label: 'Sx', type:'number' }, { id: 'n', label: 'n', type:'number' }, { id: 'alt', label: 'Alternate Hyp', type: 'select', options: ['μ ≠ μ₀', 'μ < μ₀', 'μ > μ₀'] } ], buttons: [ { label: 'OK', action: 'runTTestFromStats', class:'btn-primary' }, { label: 'Cancel', action: 'closeModal' } ], requiresData: false }),
@@ -452,7 +452,7 @@ export default function Home() {
         spreadsheetContainer!.addEventListener('mousedown', (e) => { if (!(e.target as HTMLElement).matches('td, th[data-col]')) return; const col = parseInt((e.target as HTMLElement).dataset.col!); const row = parseInt((e.target as HTMLElement).dataset.row!); if (isNaN(col) || isNaN(row)) return; appState.spreadsheet.isEditing = false; appState.spreadsheet.activeCell = { col, row }; appState.spreadsheet.isSelecting = true; appState.spreadsheet.selectionStart = { col, row }; appState.spreadsheet.selectionEnd = { col, row }; renderSpreadsheet(); });
         spreadsheetContainer!.addEventListener('mousemove', (e) => { if (!appState.spreadsheet.isSelecting || !(e.target as HTMLElement).matches('td, th[data-col]')) return; const col = parseInt((e.target as HTMLElement).dataset.col!); const row = parseInt((e.target as HTMLElement).dataset.row!); if (isNaN(col) || isNaN(row)) return; if (appState.spreadsheet.selectionEnd.col !== col || appState.spreadsheet.selectionEnd.row !== row) { appState.spreadsheet.selectionEnd = { col, row }; renderSpreadsheet(); } });
         document.addEventListener('mouseup', () => { appState.spreadsheet.isSelecting = false; });
-        spreadsheetContainer!.addEventListener('dblclick', (e) => { if((e.target as HTMLElement).matches('td, th[data-col]')) { const { col, row } = appState.spreadsheet.activeCell; const val = row === -1 ? (appState.spreadsheet.columns[col]?.name || '') : (appState.spreadsheet.columns[col]?.data[row] || ''); appState.spreadsheet.isEditing = true; appState.spreadsheet.editValue = val; renderSpreadsheet(); } });
+        spreadsheetContainer!.addEventListener('dblclick', (e) => { if((e.target as HTMLElement).matches('td, th[data-col]')) { const { col, row } = appState.spreadsheet.activeCell; appState.spreadsheet.editValue = row === -1 ? (appState.spreadsheet.columns[col]?.name || '') : (appState.spreadsheet.columns[col]?.data[row] || ''); appState.spreadsheet.isEditing = true; renderSpreadsheet(); } });
         spreadsheetContainer!.addEventListener('paste', handlePaste);
         calculatorInput!.addEventListener('keydown', (e) => { if(e.key === 'Enter') handleCalculatorInput(); });
         calculatorEnterBtn!.addEventListener('click', handleCalculatorInput);
@@ -657,7 +657,7 @@ export default function Home() {
         .main-grid {
             display: grid;
             grid-template-columns: 1fr 1.5fr;
-            grid-template-rows: 150px minmax(0, 2fr) minmax(0, 1.5fr);
+            grid-template-rows: 100px minmax(0, 2fr) minmax(0, 1.5fr);
             gap: 1rem;
             height: 100vh;
             padding: 1rem;
@@ -794,5 +794,3 @@ export default function Home() {
     </>
   );
 }
-
-    
