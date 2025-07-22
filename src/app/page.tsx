@@ -2,7 +2,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { generateExplanation, ExplanationRequest } from '@/ai/flows/explanation-flow';
+import { generateExplanation } from '@/ai/flows/explanation-flow';
+import type { ExplanationRequest } from '@/ai/schemas';
 
 
 export default function Home() {

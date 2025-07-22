@@ -1,32 +1,18 @@
+
 'use server';
 /**
  * @fileOverview An AI flow for generating explanations for statistics questions.
  *
  * - generateExplanation - A function that generates an explanation for a given question and answer.
- * - ExplanationRequestSchema - The input type for the generateExplanation function.
- * - ExplanationResponseSchema - The return type for the generateExplanation function.
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
-
-export const ExplanationRequestSchema = z.object({
-  question: z.string().describe('The multiple-choice question that was asked.'),
-  options: z.array(z.string()).describe('The list of all possible answer options.'),
-  userAnswer: z.string().describe("The specific answer the user selected."),
-  correctAnswer: z.string().describe("The correct answer for the question."),
-});
-export type ExplanationRequest = z.infer<typeof ExplanationRequestSchema>;
-
-export const ExplanationResponseSchema = z.object({
-  concept: z.string().describe("A short, catchy title for the core statistical concept being explained."),
-  isCorrect: z.boolean().describe("Whether the user's answer was correct."),
-  steps: z.array(z.string()).describe("A step-by-step explanation of how to arrive at the correct answer. Each step should be a separate string in the array."),
-  distractors: z.array(z.string()).describe("An explanation of why the most common incorrect answer choices (distractors) are wrong. Each distractor explanation should be a separate string in the array."),
-  summary: z.string().describe("A one-sentence summary of the key takeaway or principle."),
-});
-export type ExplanationResponse = z.infer<typeof ExplanationResponseSchema>;
-
+import {
+  ExplanationRequest,
+  ExplanationRequestSchema,
+  ExplanationResponse,
+  ExplanationResponseSchema,
+} from '@/ai/schemas';
 
 export async function generateExplanation(input: ExplanationRequest): Promise<ExplanationResponse> {
   return explanationFlow(input);
