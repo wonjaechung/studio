@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
+    <title>👽 원재몬의 AP Statistics Unit 2 정규분포 대모험</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Noto+Sans+KR:wght@400;700;900&display=swap');
+
+        :root {
+            --bg-deep-space: #10102c;
+            --bg-space-grad: linear-gradient(170deg, #10102c 0%, #1d1b4a 50%, #2c2a68 100%);
+            --text-light: #f0f2f5;
+            --text-dark: #2c3e50;
+            --accent-glow: #00d9ff;
+            --accent-warm: #ff3c83;
+            --accent-cool: #2bff88;
+            --wonjaemon-color-1: #4ecdc4;
+            --wonjaemon-color-2: #556270;
+            --warn-color: #ffc107;
+            --error-color: #f44336;
+            --success-color: #4caf50;
+            --normal-color: #3F51B5;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: var(--bg-deep-space);
+            color: var(--text-light);
+            overflow-x: hidden;
+        }
+
+        .webtoon-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            color: var(--text-dark);
+        }
+
+        .panel {
+            padding: 60px 40px;
+            border-bottom: 4px solid #e9ecef;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+        }
+        
+        .panel.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .panel-title {
+            font-family: 'Do Hyeon', sans-serif;
+            font-size: 2.8em;
+            text-align: center;
+            margin-bottom: 40px;
+            line-height: 1.3;
+        }
+
+        .title-panel {
+            background: var(--bg-space-grad);
+            color: var(--text-light);
+            text-align: center;
+            padding: 80px 20px;
+            position: relative;
+        }
+        
+        .title-panel .panel-title {
+            text-shadow: 0 0 15px rgba(0, 217, 255, 0.7);
+        }
+
+        .title-panel .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+            margin-top: -20px;
+        }
+
+        .wonjaemon-character {
+            width: 180px;
+            margin: 40px auto;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+        
+        .bubble {
+            padding: 25px 30px;
+            border-radius: 25px;
+            margin: 20px 0;
+            position: relative;
+            font-size: 1.1em;
+            line-height: 1.7;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+            background-color: #e3f2fd;
+            color: #1565c0;
+        }
+
+        .explanation-box {
+            padding: 25px;
+            border-radius: 20px;
+            margin: 25px 0;
+            font-size: 1.1em;
+            line-height: 1.7;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+            background: linear-gradient(135deg, #e8eaf6, #c5cae9);
+            border: 3px solid var(--normal-color);
+            color: #1a237e;
+        }
+        
+        .highlight {
+            background: linear-gradient(120deg, var(--accent-warm), var(--accent-glow));
+            padding: 3px 8px;
+            border-radius: 8px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .english-term {
+            font-family: 'Do Hyeon', sans-serif;
+            color: #2e7d32;
+            background: rgba(46, 125, 50, 0.1);
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-style: normal;
+        }
+
+        .formula-box {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            font-size: 1.3em;
+            font-weight: bold;
+            border: 2px solid;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: center;
+            color: var(--normal-color);
+            border-color: var(--normal-color);
+        }
+        
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .comparison-item {
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            border: 3px solid;
+        }
+        
+        .normal-curve-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin: 20px auto;
+        }
+
+        .ti-nspire-box {
+            background: #2d2d2d;
+            color: #f0f0f0;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 4px solid #4a4a4a;
+        }
+        .ti-nspire-box h4 {
+            color: var(--accent-glow);
+            font-family: 'Do Hyeon', sans-serif;
+        }
+        .ti-code {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 1.1em;
+        }
+        .ti-param {
+            color: #9cdcfe;
+        }
+        .ti-comment {
+            color: #6a9955;
+        }
+
+        .z-table-visual {
+            width: 100%;
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            border: 2px solid #dee2e6;
+        }
+        
+        .z-table-visual table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        .z-table-visual th, .z-table-visual td {
+            border: 1px solid #ccc;
+            padding: 5px;
+            text-align: center;
+        }
+        .z-table-visual th {
+            background-color: #e9ecef;
+        }
+        .z-table-visual .highlight-row {
+            background-color: rgba(255, 193, 7, 0.3);
+        }
+        .z-table-visual .highlight-col {
+            background-color: rgba(255, 193, 7, 0.3);
+        }
+        .z-table-visual .final-cell {
+            background-color: var(--warn-color);
+            font-weight: bold;
+            color: black;
+        }
+
+        .standardize-viz {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .standardize-arrow {
+            font-size: 3em;
+            font-weight: bold;
+            color: var(--accent-warm);
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .panel { padding: 40px 20px; }
+            .panel-title { font-size: 2.2em; }
+            .comparison-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="webtoon-container">
+        
+        <section class="panel title-panel is-visible">
+            <h1 class="panel-title">👽 원재몬의 AP Statistics Unit 2<br>🔔 정규분포 대모험 🔔</h1>
+            <div class="wonjaemon-character">
+                <!-- Wonjaemon SVG can go here -->
+            </div>
+            <p class="subtitle">서로 다른 우주의 간지력을 Z-Score로 비교하다!</p>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">[1장] 비교의 딜레마 - 누가 더 간지나는가?</h2>
+            <div class="bubble">"새로운 임무다! A 행성과 B 행성 주민들의 '간지력'을 비교 분석하라! 그런데... 두 행성의 간지력 분포가 너무 달라서 직접 비교가 힘들어. A행성의 최고 멋쟁이와 B행성의 최고 멋쟁이 중 누가 우주적으로 더 간지나는 거지?"</div>
+
+            <div class="explanation-box">
+                <h3>📊 문제 상황: 서로 다른 <span class="english-term">Normal Distributions</span></h3>
+                <p>원재몬은 두 행성의 '간지력' 데이터가 아름다운 대칭형 종 모양, 즉 <span class="english-term">Normal Distribution</span>을 따른다는 것을 발견했다. 하지만 문제가 있었다.</p>
+                <div class="comparison-grid">
+                    <div class="comparison-item" style="border-color: var(--accent-warm); background: #fce4ec;">
+                        <h4 style="color: var(--accent-warm);">🪐 A 행성 간지력 (X)</h4>
+                        <p>$$ \mu_X = 100, \sigma_X = 10 $$</p>
+                        <p><strong>A행성 대표 '알파'의 간지력: 120</strong></p>
+                    </div>
+                    <div class="comparison-item" style="border-color: var(--accent-cool); background: #e8f5e9;">
+                        <h4 style="color: var(--accent-cool);">🌍 B 행성 간지력 (Y)</h4>
+                        <p>$$ \mu_Y = 500, \sigma_Y = 50 $$</p>
+                        <p><strong>B행성 대표 '베타'의 간지력: 580</strong></p>
+                    </div>
+                </div>
+                <p style="margin-top: 20px; text-align:center;">단순히 점수만 보면 580점인 '베타'가 훨씬 높아 보이지만, 각 행성의 평균과 퍼짐 정도가 다르기 때문에 공정한 비교가 아니다. 이때 필요한 것이 바로 <span class="highlight">표준화(Standardization)</span>다!</p>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">[2장] Z-Score - 우주 공용 간지력 측정기</h2>
+            <div class="bubble">"알겠다! 각자의 세계에서 얼마나 대단한지를 측정할 공통의 '척도'가 필요해. 평균으로부터 표준편차의 몇 배만큼 떨어져 있는지를 계산하면, 누가 상대적으로 더 뛰어난지 알 수 있을 거야! 이걸 <span class="english-term">Z-Score</span>라고 부르자!"</div>
+            
+            <div class="explanation-box">
+                <h3>⚡ <span class="english-term">Z-Score</span>: 표준화 점수</h3>
+                <p><span class="english-term">Z-score</span>는 특정 데이터 값이 자신의 분포의 평균으로부터 몇 개의 표준편차만큼 떨어져 있는지를 나타내는 값이다.</p>
+                <div class="formula-box">
+                    $$ Z = \frac{\text{관측값} - \text{평균}}{\text{표준편차}} = \frac{x - \mu}{\sigma} $$
+                </div>
+            </div>
+
+            <div class="comparison-grid">
+                <div class="comparison-item" style="border-color: var(--accent-warm); background: #fce4ec;">
+                    <h4 style="color: var(--accent-warm);">🪐 '알파'의 Z-Score</h4>
+                    <p>$$ Z_{\text{알파}} = \frac{120 - 100}{10} = 2.0 $$</p>
+                    <p><strong>의미:</strong> 알파는 A행성 평균보다 표준편차의 <span class="highlight">2배</span>만큼 간지력이 높다!</p>
+                </div>
+                <div class="comparison-item" style="border-color: var(--accent-cool); background: #e8f5e9;">
+                    <h4 style="color: var(--accent-cool);">🌍 '베타'의 Z-Score</h4>
+                    <p>$$ Z_{\text{베타}} = \frac{580 - 500}{50} = \frac{80}{50} = 1.6 $$</p>
+                    <p><strong>의미:</strong> 베타는 B행성 평균보다 표준편차의 <span class="highlight">1.6배</span>만큼 간지력이 높다!</p>
+                </div>
+            </div>
+            
+            <div class="explanation-box" style="border-color: var(--success-color); background: #e8f5e9; color: #1b5e20;">
+                <h3>🏆 결론</h3>
+                <p>Z-score를 비교해보니 2.0 > 1.6 이므로, 각자의 행성 내에서의 상대적인 위치를 고려했을 때 <span class="highlight">'알파'가 '베타'보다 더 간지나는 존재</span>라고 할 수 있다!</p>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">[3장] <span class="english-term">Standard Normal Distribution</span> - 모든 정규분포의 기준</h2>
+            <div class="bubble">"모든 정규분포를 Z-score로 바꾸니 신기한 일이 일어났어! 모든 분포가 평균이 0이고 표준편차가 1인 똑같은 모양의 분포로 변신했어! 이것이 바로 <span class="english-term">Standard Normal Distribution</span>이구나!"</div>
+
+            <div class="standardize-viz">
+                <div class="normal-curve-container">
+                    <h4 style="text-align:center; color: var(--accent-warm);">A 행성 (X)</h4>
+                    <svg viewBox="70 -1 60 5" preserveAspectRatio="xMidYMid meet">
+                        <path d="M 70 4 C 80 4, 85 2.5, 100 0 C 115 2.5, 120 4, 130 4" stroke="var(--accent-warm)" stroke-width="0.2" fill="rgba(255, 60, 131, 0.1)" transform="translate(0, 0.01)"/>
+                        <line x1="70" y1="4" x2="130" y2="4" stroke="#333" stroke-width="0.05" />
+                        <text x="100" y="4.8" font-size="0.8" text-anchor="middle">μ=100</text>
+                    </svg>
+                    <h4 style="text-align:center; color: var(--accent-cool); margin-top: 20px;">B 행성 (Y)</h4>
+                    <svg viewBox="350 -1 300 5" preserveAspectRatio="xMidYMid meet">
+                        <path d="M 350 4 C 400 4, 425 2.5, 500 0 C 575 2.5, 600 4, 650 4" stroke="var(--accent-cool)" stroke-width="0.2" fill="rgba(43, 255, 136, 0.1)" transform="translate(0, 0.01)"/>
+                        <line x1="350" y1="4" x2="650" y2="4" stroke="#333" stroke-width="0.05" />
+                        <text x="500" y="4.8" font-size="0.8" text-anchor="middle">μ=500</text>
+                    </svg>
+                </div>
+                <div class="standardize-arrow">
+                    <div>→</div>
+                    <div style="font-size:0.5em; font-family:'Do Hyeon', sans-serif;">Standardize</div>
+                    <div>→</div>
+                </div>
+                <div class="normal-curve-container">
+                    <h4 style="text-align:center; color: var(--accent-glow);">표준 정규분포 (Z)</h4>
+                    <svg viewBox="-4 -1 8 5" preserveAspectRatio="xMidYMid meet">
+                        <path d="M -4 4 C -2.5 4, -2 2.5, 0 0 C 2 2.5, 2.5 4, 4 4" stroke="var(--accent-glow)" stroke-width="0.1" fill="rgba(0, 217, 255, 0.1)" transform="translate(0, 0.01)"/>
+                        <line x1="-4" y1="4" x2="4" y2="4" stroke="#333" stroke-width="0.05" />
+                        <text x="0" y="4.8" font-size="0.3" text-anchor="middle">μ=0</text>
+                        <text x="1" y="4.8" font-size="0.3" text-anchor="middle">σ=1</text>
+                    </svg>
+                </div>
+            </div>
+            
+            <div class="explanation-box">
+                <h3>🌟 재미있는 사실: 거리로 확률을 구하다! (The Empirical Rule)</h3>
+                <p>표준정규분포에서 곡선 아래의 <span class="highlight">전체 면적은 1 (즉, 100%)</span>이야. 그리고 Z-score는 평균(0)으로부터의 거리를 나타내지. 이 거리(면적)를 이용해 확률을 근사할 수 있어!</p>
+                <div class="normal-curve-container">
+                     <svg viewBox="-4 0 8 4.5" width="100%" height="auto" preserveAspectRatio="xMidYMid meet">
+                        <defs>
+                            <path id="emp-curve" d="M -3.5 4 C -2.5 4, -2 2.5, 0 0 C 2 2.5, 2.5 4, 3.5 4"/>
+                            <clipPath id="clip1"><rect x="-1" y="-0.2" width="2" height="4.2"/></clipPath>
+                            <clipPath id="clip2"><rect x="-2" y="-0.2" width="4" height="4.2"/></clipPath>
+                            <clipPath id="clip3"><rect x="-3" y="-0.2" width="6" height="4.2"/></clipPath>
+                        </defs>
+                        <use href="#emp-curve" stroke="var(--normal-color)" stroke-width="0.1" fill="none"/>
+                        <use href="#emp-curve" fill="rgba(255, 193, 7, 0.4)" clip-path="url(#clip3)"/>
+                        <use href="#emp-curve" fill="rgba(33, 150, 243, 0.4)" clip-path="url(#clip2)"/>
+                        <use href="#emp-curve" fill="rgba(255, 60, 131, 0.4)" clip-path="url(#clip1)"/>
+                        <line x1="-3.5" y1="4" x2="3.5" y2="4" stroke="#333" stroke-width="0.05" />
+                        <text x="0" y="2.5" font-size="0.5" text-anchor="middle" font-weight="bold" fill="#fff">68%</text>
+                        <text x="-1.5" y="3.5" font-size="0.4" text-anchor="middle" font-weight="bold" fill="#fff">95%</text>
+                        <text x="1.5" y="3.5" font-size="0.4" text-anchor="middle" font-weight="bold" fill="#fff">95%</text>
+                        <text x="-2.5" y="3.8" font-size="0.3" text-anchor="middle" font-weight="bold" fill="#fff">99.7%</text>
+                        <text x="2.5" y="3.8" font-size="0.3" text-anchor="middle" font-weight="bold" fill="#fff">99.7%</text>
+                        <text x="0" y="4.4" font-size="0.3" text-anchor="middle">μ</text>
+                        <text x="1" y="4.4" font-size="0.3" text-anchor="middle">μ+σ</text>
+                        <text x="2" y="4.4" font-size="0.3" text-anchor="middle">μ+2σ</text>
+                        <text x="-1" y="4.4" font-size="0.3" text-anchor="middle">μ-σ</text>
+                        <text x="-2" y="4.4" font-size="0.3" text-anchor="middle">μ-2σ</text>
+                    </svg>
+                </div>
+                <p><strong>응용:</strong> A행성의 '알파'(간지력 120점)는 평균 100, 표준편차 10인 분포에 속해. 그의 점수는 정확히 평균으로부터 +2 표준편차($$\mu+2\sigma$$) 위치에 있어. Empirical Rule에 따르면, 이 위치는 상위 2.5%에 해당한다는 것을 바로 알 수 있지!</p>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">[4장] Z-Table과 계산기 - 확률 계산의 기술</h2>
+            <div class="bubble">"Empirical Rule은 근사치일 뿐이야. Z-score가 1.6처럼 딱 떨어지지 않을 땐 어떡하지? 이럴 때 지구인들은 <span class="english-term">Z-Table</span>이라는 고대의 유물이나 <span class="english-term">TI-Nspire</span>라는 마법 도구를 사용해 정확한 확률(면적)을 구해!"</div>
+
+            <div class="z-table-visual">
+                <h3 style="color: var(--normal-color); text-align:center;">Z-Table 읽는 법 (예: Z < 1.60)</h3>
+                <p style="text-align:center;">Z-table은 평균(0)부터 특정 Z-score까지의 <span class="highlight">왼쪽 꼬리 면적(확률)</span>을 알려준다.</p>
+                <table>
+                    <thead>
+                        <tr><th>Z</th><th class="highlight-col">.00</th><th>.01</th><th>.02</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><th>1.4</th><td>.9192</td><td>.9207</td><td>.9222</td></tr>
+                        <tr class="highlight-row"><th>1.5</th><td>.9332</td><td>.9345</td><td>.9357</td></tr>
+                        <tr class="highlight-row"><th>1.6</th><td class="final-cell">.9452</td><td>.9463</td><td>.9474</td></tr>
+                        <tr><th>1.7</th><td>.9554</td><td>.9564</td><td>.9573</td></tr>
+                    </tbody>
+                </table>
+                <p style="margin-top:15px;"><strong>읽는 법:</strong> 왼쪽 세로축에서 <span class="highlight">1.6</span>을 찾고, 위쪽 가로축에서 <span class="highlight">.00</span>을 찾아 두 선이 만나는 지점의 값, <strong>0.9452</strong>를 읽는다. 즉, $$ P(Z < 1.60) = 0.9452 $$ 이다.</p>
+            </div>
+            
+            <div class="explanation-box" style="border-color: var(--warn-color); background: #fff8e1; color: #f57f17;">
+                <h4>⚠️ 잠깐! 오른쪽 면적(> 확률)은 어떻게 구해?</h4>
+                <p>Z-table은 왼쪽 면적만 알려줘. 오른쪽 면적을 구하려면 <span class="highlight">전체 면적(1)에서 왼쪽 면적을 빼면 돼!</span></p>
+                <div class="comparison-grid">
+                    <div style="text-align:center;">
+                        <h5>Z-Table이 알려주는 값: P(Z < 1.6)</h5>
+                        <svg viewBox="-4 0 8 4.5" preserveAspectRatio="xMidYMid meet">
+                            <defs><path id="curve" d="M -3.5 4 C -2.5 4, -2 2.5, 0 0 C 2 2.5, 2.5 4, 3.5 4"/><clipPath id="clip-left"><rect x="-4" y="-0.2" width="5.6" height="4.2"/></clipPath></defs>
+                            <use href="#curve" stroke="var(--normal-color)" stroke-width="0.1" fill="none"/>
+                            <use href="#curve" fill="rgba(33, 150, 243, 0.4)" clip-path="url(#clip-left)"/>
+                            <line x1="-3.5" y1="4" x2="3.5" y2="4" stroke="#333" stroke-width="0.05" />
+                            <line x1="1.6" y1="0.9" x2="1.6" y2="4" stroke-width="0.08" stroke="var(--normal-color)"/>
+                            <text x="1.6" y="4.4" font-size="0.3" text-anchor="middle">1.6</text>
+                        </svg>
+                        <p>$$ P(Z < 1.6) = 0.9452 $$</p>
+                    </div>
+                    <div style="text-align:center;">
+                        <h5>우리가 구하고 싶은 값: P(Z > 1.6)</h5>
+                        <svg viewBox="-4 0 8 4.5" preserveAspectRatio="xMidYMid meet">
+                             <defs><clipPath id="clip-right"><rect x="1.6" y="-0.2" width="3.4" height="4.2"/></clipPath></defs>
+                            <use href="#curve" stroke="var(--normal-color)" stroke-width="0.1" fill="none"/>
+                            <use href="#curve" fill="rgba(255, 60, 131, 0.4)" clip-path="url(#clip-right)"/>
+                            <line x1="-3.5" y1="4" x2="3.5" y2="4" stroke="#333" stroke-width="0.05" />
+                            <line x1="1.6" y1="0.9" x2="1.6" y2="4" stroke-width="0.08" stroke="var(--normal-color)"/>
+                            <text x="1.6" y="4.4" font-size="0.3" text-anchor="middle">1.6</text>
+                        </svg>
+                        <p>$$ 1 - P(Z < 1.6) = 0.0548 $$</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ti-nspire-box">
+                <h4>🤖 TI-Nspire 계산기 마법 주문</h4>
+                <p>계산기를 사용하면 Z-table을 찾을 필요 없이 더 빠르고 정확하게 계산할 수 있다.</p>
+                
+                <h5 style="margin-top:20px; color: var(--accent-cool);">1. <span class="english-term">normCdf</span>: 면적(확률) 구하기</h5>
+                <p>주어진 범위(lower bound, upper bound) 사이의 정규분포 곡선 아래 면적을 계산한다.</p>
+                <div class="ti-code">
+                    <span class="ti-param">normCdf</span>(lower, upper, μ, σ)
+                    <br>
+                    <span class="ti-comment">// 예: 베타(580점)보다 간지력이 높을 확률은?</span>
+                    <br>
+                    <span class="ti-param">normCdf</span>(580, ∞, 500, 50) ≈ 0.0548
+                </div>
+
+                <h5 style="margin-top:20px; color: var(--accent-warm);">2. <span class="english-term">invNorm</span>: 특정 확률에 해당하는 값 구하기</h5>
+                <p>왼쪽 꼬리 면적(확률)을 알려주면, 그 경계가 되는 값을 찾아준다.</p>
+                <div class="ti-code">
+                    <span class="ti-param">invNorm</span>(area, μ, σ)
+                    <br>
+                    <span class="ti-comment">// 예: A행성에서 상위 10%에 들려면 몇 점이어야 할까?</span>
+                    <br>
+                    <span class="ti-comment">// (상위 10% = 왼쪽 꼬리 면적이 90%인 지점)</span>
+                    <br>
+                    <span class="ti-param">invNorm</span>(0.90, 100, 10) ≈ 112.8
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        // 패널 애니메이션
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.panel').forEach(panel => observer.observe(panel));
+
+    </script>
+
+</body>
+</html>

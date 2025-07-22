@@ -1,0 +1,1922 @@
+<!DOCTYPE html><html lang="ko"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
+    <title>👽 원재몬의 AP Statistics 데이터 수집 대모험 (강화판)</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Noto+Sans+KR:wght@400;700;900&display=swap');
+
+        :root {
+            --bg-deep-space: #0f0c29;
+            --bg-space-grad: linear-gradient(170deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            --text-light: #f0f2f5;
+            --text-dark: #2c3e50;
+            --accent-glow: #4facfe;
+            --accent-warm: #fa709a;
+            --accent-cool: #43e97b;
+            --wonjaemon-color-1: #4ecdc4;
+            --wonjaemon-color-2: #556270;
+            --warn-color: #ff9800;
+            --error-color: #f44336;
+            --success-color: #4caf50;
+            --experiment-color: #9c27b0;
+            --sample-color: #3f51b5;
+            --bias-color: #e91e63;
+            --accent-red: #c0392b;
+            --accent-blue: #3498db;
+            --accent-purple: #9b59b6;
+            --accent-green: #27ae60;
+            --accent-orange: #e67e22;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: var(--bg-deep-space);
+            color: var(--text-light);
+            overflow-x: hidden;
+        }
+
+        .webtoon-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            color: var(--text-dark);
+        }
+
+        .panel {
+            padding: 60px 40px;
+            border-bottom: 4px solid #e9ecef;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+        }
+        
+        .panel.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .panel-title {
+            font-family: 'Do Hyeon', sans-serif;
+            font-size: 2.8em;
+            text-align: center;
+            margin-bottom: 40px;
+            line-height: 1.3;
+        }
+
+        .title-panel {
+            background: var(--bg-space-grad);
+            color: var(--text-light);
+            text-align: center;
+            padding: 80px 20px;
+            position: relative;
+        }
+        
+        .title-panel .panel-title {
+            text-shadow: 0 0 15px rgba(79, 172, 254, 0.7);
+        }
+
+        .title-panel .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+            margin-top: -20px;
+        }
+
+        .wonjaemon-character {
+            width: 180px;
+            margin: 40px auto;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        #wonjaemon-antenna-light {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { fill: #ff6b6b; r: 6; }
+            50% { fill: #ff8e8e; r: 7; }
+        }
+        
+        .wonjaemon-expression .normal, .wonjaemon-expression .thinking, .wonjaemon-expression .surprised, .wonjaemon-expression .detective, .wonjaemon-expression .excited, .wonjaemon-expression .confused { display: none; }
+        .wonjaemon-expression.is-normal .normal { display: block; }
+        .wonjaemon-expression.is-thinking .thinking { display: block; }
+        .wonjaemon-expression.is-surprised .surprised { display: block; }
+        .wonjaemon-expression.is-detective .detective { display: block; }
+        .wonjaemon-expression.is-excited .excited { display: block; }
+        .wonjaemon-expression.is-confused .confused { display: block; }
+
+        .bubble {
+            padding: 25px 30px;
+            border-radius: 25px;
+            margin: 20px 0;
+            position: relative;
+            font-size: 1.1em;
+            line-height: 1.7;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+        }
+
+        .speech {
+            background-color: #e3f2fd;
+            color: #1565c0;
+        }
+
+        .speech::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50px;
+            width: 0;
+            height: 0;
+            border: 20px solid transparent;
+            border-top-color: #e3f2fd;
+            border-bottom: 0;
+            margin-left: -20px;
+            margin-bottom: -20px;
+        }
+        
+        .thought {
+            border: 3px dashed #a0c4e4;
+            background-color: #f8f9fa;
+            color: #495057;
+            font-style: italic;
+        }
+        
+        .thought::after {
+            content: '...';
+            position: absolute;
+            bottom: -35px;
+            left: 30px;
+            letter-spacing: 4px;
+            font-size: 2em;
+            font-weight: bold;
+            color: #a0c4e4;
+        }
+
+        .excitement {
+            background: linear-gradient(135deg, #fff3e0, #ffcc80);
+            border: 3px solid var(--warn-color);
+            color: #e65100;
+        }
+
+        .excitement::after {
+            content: '!';
+            position: absolute;
+            bottom: -35px;
+            left: 30px;
+            font-size: 2em;
+            font-weight: bold;
+            color: var(--warn-color);
+        }
+        
+        .narration, .explanation-box, .step-by-step, .visual-demo, .sample-box, .experiment-box, .bias-box, .design-box, .quiz-box, .tip-box, .english-box {
+            padding: 25px;
+            border-radius: 20px;
+            margin: 25px 0;
+            font-size: 1.1em;
+            line-height: 1.7;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+        }
+        
+        .narration {
+            background-color: #f8f9fa;
+            border-left: 5px solid var(--accent-glow);
+            color: #495057;
+            font-style: italic;
+        }
+        
+        .explanation-box {
+            background: linear-gradient(135deg, #e8f5e9, #d4edda);
+            border: 3px solid var(--success-color);
+            color: #155724;
+        }
+        
+        .step-by-step {
+            background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+            border: 3px solid var(--warn-color);
+            color: #e65100;
+        }
+        
+        .visual-demo {
+            background: linear-gradient(135deg, #f3e5f5, #e1bee7);
+            border: 3px solid #9c27b0;
+            color: #4a148c;
+        }
+
+        .sample-box {
+            background: linear-gradient(135deg, #e8eaf6, #c5cae9);
+            border: 3px solid var(--sample-color);
+            color: #1a237e;
+        }
+
+        .experiment-box {
+            background: linear-gradient(135deg, #ede7f6, #d1c4e9);
+            border: 3px solid var(--experiment-color);
+            color: #4a148c;
+        }
+
+        .bias-box {
+            background: linear-gradient(135deg, #fce4ec, #f8bbd9);
+            border: 3px solid var(--bias-color);
+            color: #880e4f;
+        }
+
+        .design-box {
+            background: linear-gradient(135deg, #e1f5fe, #b3e5fc);
+            border: 3px solid #0288d1;
+            color: #01579b;
+        }
+
+        .quiz-box {
+            background: linear-gradient(135deg, #fff9c4, #fff59d);
+            border: 3px solid #fbc02d;
+            color: #f57f17;
+        }
+
+        .tip-box {
+            background: linear-gradient(135deg, #ffebee, #ffcdd2);
+            border: 3px solid var(--error-color);
+            color: #c62828;
+        }
+
+        .english-box {
+            background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+            border: 3px solid #2e7d32;
+            color: #1b5e20;
+            font-weight: bold;
+        }
+
+        .highlight {
+            background: linear-gradient(120deg, #a8edea 0%, #fed6e3 100%);
+            padding: 3px 8px;
+            border-radius: 8px;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        .stat-term {
+            color: #1e40af;
+            font-weight: 700;
+            background: rgba(30, 64, 175, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .english-term {
+            color: #2e7d32;
+            font-weight: 700;
+            background: rgba(46, 125, 50, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-style: italic;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .comparison-item {
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            border: 2px solid;
+        }
+
+        .population-item {
+            background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+            border-color: var(--success-color);
+            color: #1b5e20;
+        }
+
+        .sample-item {
+            background: linear-gradient(135deg, #e8eaf6, #c5cae9);
+            border-color: var(--sample-color);
+            color: #1a237e;
+        }
+
+        .experiment-item {
+            background: linear-gradient(135deg, #ede7f6, #d1c4e9);
+            border-color: var(--experiment-color);
+            color: #4a148c;
+        }
+
+        .observational-item {
+            background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+            border-color: var(--warn-color);
+            color: #e65100;
+        }
+
+        .sampling-methods {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .sampling-method {
+            background: white;
+            border: 2px solid var(--sample-color);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sampling-method:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .sampling-method h4 {
+            color: var(--sample-color);
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .sampling-method p {
+            flex-grow: 1;
+        }
+
+        .sampling-visual {
+            width: 100%;
+            min-height: 150px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin: 15px 0;
+            position: relative;
+            overflow: hidden;
+            padding: 15px;
+        }
+        
+        .sampling-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 8px;
+            margin: 20px auto;
+            max-width: 400px;
+        }
+
+        .sampling-dot {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            transition: all 0.3s ease;
+        }
+
+        .dot-unselected {
+            background: #aaa;
+            border-color: #ccc;
+        }
+
+        .dot-selected {
+            background: var(--accent-red);
+            border-color: var(--accent-red);
+            box-shadow: 0 0 10px var(--accent-red);
+            animation: glow 1.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { box-shadow: 0 0 5px var(--accent-red); }
+            to { box-shadow: 0 0 15px var(--accent-red); }
+        }
+
+        .stratum-group {
+            margin: 5px 0;
+            padding: 10px;
+            border: 2px dashed var(--accent-blue);
+            border-radius: 10px;
+        }
+        
+        .stratum-group h4 { font-size: 1em; margin-bottom: 5px; }
+        .stratum-1 { background: rgba(255, 193, 7, 0.1); border-color: #ffc107; }
+        .stratum-2 { background: rgba(52, 152, 219, 0.1); border-color: #3498db; }
+        .stratum-3 { background: rgba(39, 174, 96, 0.1); border-color: #27ae60; }
+
+        .stratum-dots {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 5px;
+        }
+
+        .cluster-container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .cluster-group {
+            margin: 5px;
+            padding: 10px;
+            border: 2px dashed #999;
+            border-radius: 10px;
+            background: rgba(0,0,0,0.02);
+        }
+        .cluster-group h4 { font-size: 1em; margin-bottom: 5px; color: #666;}
+        .cluster-selected {
+            border-color: var(--accent-red);
+            background: rgba(231, 76, 60, 0.1);
+        }
+        .cluster-selected h4 { color: var(--accent-red); }
+        .cluster-dots {
+            display: flex;
+            gap: 5px;
+            margin-top: 5px;
+        }
+
+
+        .bias-types {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .bias-type {
+            background: white;
+            border: 2px solid var(--bias-color);
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .bias-type h4 {
+            color: var(--bias-color);
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .bias-story {
+            background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+            border: 2px solid var(--warn-color);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            color: #e65100;
+        }
+
+        .design-principles {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .design-principle {
+            background: white;
+            border: 2px solid #0288d1;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .design-principle h4 {
+            color: #0288d1;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .flow-diagram {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .flow-step {
+            background: white;
+            border: 2px solid var(--sample-color);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px;
+            display: inline-block;
+            min-width: 150px;
+        }
+
+        .flow-arrow {
+            font-size: 2em;
+            color: var(--sample-color);
+            margin: 0 10px;
+        }
+
+        .interactive-demo {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+            color: #495057;
+        }
+
+        .demo-input {
+            margin: 10px;
+            padding: 12px;
+            border: 2px solid #ced4da;
+            border-radius: 8px;
+            font-size: 1em;
+            width: 120px;
+        }
+
+        .demo-button {
+            background: var(--sample-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .demo-button:hover {
+            background: var(--experiment-color);
+            transform: translateY(-2px);
+        }
+
+        .demo-result {
+            margin-top: 15px;
+            padding: 20px;
+            background: #e8f5e9;
+            border-radius: 10px;
+            font-weight: bold;
+            color: #155724;
+            border-left: 5px solid var(--success-color);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 0.9em;
+            background: white;
+        }
+
+        .data-table th, .data-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: center;
+            color: #2c3e50;
+        }
+
+        .data-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .visual-population {
+            width: 100%;
+            height: 300px;
+            background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+            border: 2px solid var(--success-color);
+            border-radius: 10px;
+            margin: 20px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .population-dots {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        .population-dot {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: var(--success-color);
+            border-radius: 50%;
+        }
+
+        .sample-dots {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        .sample-dot {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: var(--sample-color);
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+
+        .bias-game-scenario {
+            background: white;
+            border: 2px solid var(--bias-color);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 15px 0;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .scenario-title {
+            color: var(--bias-color);
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .panel { padding: 40px 20px; }
+            .panel-title { font-size: 2.2em; }
+            .comparison-grid { grid-template-columns: 1fr; }
+            .sampling-methods { grid-template-columns: 1fr; }
+            .bias-types { grid-template-columns: 1fr; }
+            .design-principles { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+            .sampling-grid { grid-template-columns: repeat(6, 1fr); }
+        }
+    </style></head><body>
+
+    <div class="webtoon-container">
+
+        <svg width="0" height="0" style="position:absolute;">
+            <defs>
+                <g id="wonjaemon-svg-base">
+                    <path d="M 75,25 A 55,55 0 0 1 75,135 A 55,55 0 0 1 75,25" fill="#4ECDC4"/>
+                    <path d="M 75,25 A 55,55 0 0 0 75,135" fill="#44A08D"/>
+                    <line x1="75" y1="25" x2="75" y2="0" stroke="#556270" stroke-width="5"/>
+                    <circle id="wonjaemon-antenna-light" cx="75" cy="-5" r="6" fill="#ff6b6b"/>
+                </g>
+                <g id="wonjaemon-face-normal">
+                    <circle cx="55" cy="70" r="10" fill="#FFFFFF"/><circle cx="95" cy="70" r="10" fill="#FFFFFF"/>
+                    <circle cx="55" cy="70" r="5" fill="#2C3E50"/><circle cx="95" cy="70" r="5" fill="#2C3E50"/>
+                    <path d="M 65,100 Q 75,110 85,100" stroke="#FFFFFF" stroke-width="4" fill="none" stroke-linecap="round"/>
+                </g>
+                <g id="wonjaemon-face-thinking">
+                    <circle cx="55" cy="70" r="10" fill="#FFFFFF"/><circle cx="95" cy="70" r="10" fill="#FFFFFF"/>
+                    <circle cx="55" cy="70" r="5" fill="#2C3E50"/><circle cx="95" cy="70" r="5" fill="#2C3E50"/>
+                    <path d="M 65,105 L 85,105" stroke="#FFFFFF" stroke-width="4" fill="none" stroke-linecap="round"/>
+                </g>
+                <g id="wonjaemon-face-surprised">
+                    <circle cx="55" cy="70" r="12" fill="#FFFFFF"/><circle cx="95" cy="70" r="12" fill="#FFFFFF"/>
+                    <circle cx="55" cy="70" r="6" fill="#2C3E50"/><circle cx="95" cy="70" r="6" fill="#2C3E50"/>
+                    <ellipse cx="75" cy="110" rx="15" ry="10" fill="#FFFFFF"/>
+                </g>
+                <g id="wonjaemon-face-detective">
+                    <rect x="20" y="55" width="110" height="25" fill="#343a40" rx="10" ry="10"/>
+                    <path d="M 65,100 Q 75,105 85,100" stroke="#FFFFFF" stroke-width="4" fill="none" stroke-linecap="round"/>
+                </g>
+                <g id="wonjaemon-face-excited">
+                    <circle cx="55" cy="70" r="12" fill="#FFFFFF"/><circle cx="95" cy="70" r="12" fill="#FFFFFF"/>
+                    <circle cx="55" cy="70" r="6" fill="#2C3E50"/><circle cx="95" cy="70" r="6" fill="#2C3E50"/>
+                    <path d="M 60,95 Q 75,85 90,95" stroke="#FFFFFF" stroke-width="5" fill="none" stroke-linecap="round"/>
+                </g>
+                <g id="wonjaemon-face-confused">
+                    <circle cx="55" cy="70" r="10" fill="#FFFFFF"/><circle cx="95" cy="70" r="10" fill="#FFFFFF"/>
+                    <circle cx="55" cy="70" r="5" fill="#2C3E50"/><circle cx="95" cy="70" r="5" fill="#2C3E50"/>
+                    <path d="M 65,100 Q 75,95 85,100" stroke="#FFFFFF" stroke-width="4" fill="none" stroke-linecap="round"/>
+                </g>
+            </defs>
+        </svg>
+
+        <section class="panel title-panel is-visible">
+            <h1 class="panel-title">👽 원재몬의 AP Statistics 데이터 수집 대모험 📊</h1>
+            <div class="wonjaemon-character wonjaemon-expression is-excited">
+                <svg viewBox="0 0 150 150"><use href="#wonjaemon-svg-base"/><use class="excited" href="#wonjaemon-face-excited"/></svg>
+            </div>
+            <p class="subtitle">집중력 음료의 비밀을 파헤치며 배우는 데이터 수집의 모든 것!</p>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">[프롤로그] 원재몬의 새로운 발견</h2>
+            <div class="narration">M-78 통계 성운에서 온 원재몬이 지구에서 신기한 음료를 발견했다. 바로 '집중력 음료'! 과연 이 음료가 정말 집중력을 높여줄까? 원재몬의 데이터 수집 모험이 시작된다!</div>
+            
+            <div class="wonjaemon-character wonjaemon-expression is-surprised">
+                <svg viewBox="0 0 150 150"><use href="#wonjaemon-svg-base"/><use class="surprised" href="#wonjaemon-face-surprised"/></svg>
+            </div>
+            <div class="bubble speech">"와! 지구인들이 마시는 이 음료가 집중력을 높여준다고? 정말일까? 하지만 지구 전체 학생들에게 다 줄 수는 없잖아... 어떻게 조사하지?"</div>
+
+            <div class="explanation-box">
+                <h3>🎯 원재몬의 미션</h3>
+                <p>원재몬은 집중력 음료의 효과를 과학적으로 검증하고 싶어한다. 하지만 지구의 모든 학생들을 대상으로 할 수는 없다. 이때 필요한 것이 바로 <span class="stat-term">데이터 수집(Data Collection)</span> 방법이다!</p>
+                <ul style="padding-left: 20px; margin-top: 15px;">
+                    <li><strong>연구 질문:</strong> 집중력 음료가 정말 집중력을 향상시킬까?</li>
+                    <li><strong>문제:</strong> 모든 학생을 조사할 수 없다</li>
+                    <li><strong>해결책:</strong> 올바른 데이터 수집 방법 사용</li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">[1장] 모집단 vs 표본 - 큰 그림 vs 작은 조각</h2>
+            <div class="wonjaemon-character wonjaemon-expression is-thinking">
+                <svg viewBox="0 0 150 150"><use href="#wonjaemon-svg-base"/><use class="thinking" href="#wonjaemon-face-thinking"/></svg>
+            </div>
+            <div class="bubble speech">"지구의 모든 학생들을 조사할 수는 없으니까... 일부만 뽑아서 조사해야겠어! 그런데 어떻게 뽑아야 전체를 대표할 수 있을까?"</div>
+
+            <div class="sample-box">
+                <h3>📚 모집단과 표본의 개념</h3>
+                <div class="comparison-grid">
+                    <div class="comparison-item population-item">
+                        <h4>🌍 모집단 (Population)</h4>
+                        <p><strong>정의:</strong> 우리가 정보를 얻고 싶어하는 전체 그룹</p>
+                        <p><strong>예시:</strong> 전 세계 모든 고등학생</p>
+                        <p><strong>특징:</strong> 보통 너무 커서 전체 조사 불가능</p>
+                    </div>
+                    <div class="comparison-item sample-item">
+                        <h4>🎯 표본 (Sample)</h4>
+                        <p><strong>정의:</strong> 모집단에서 실제로 조사하는 일부</p>
+                        <p><strong>예시:</strong> 선택된 100명의 고등학생</p>
+                        <p><strong>특징:</strong> 모집단을 대표해야 함</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="visual-demo">
+                <h3>🎨 시각적 이해: 모집단과 표본</h3>
+                <div class="visual-population">
+                    <div class="population-dots" id="population-visualization">
+                        <!-- 자바스크립트로 점들 생성 -->
+                    </div>
+                    <div class="sample-dots" id="sample-visualization">
+                        <!-- 자바스크립트로 표본 점들 생성 -->
+                    </div>
+                </div>
+                <p style="text-align: center; margin-top: 10px;">
+                    <span style="color: var(--success-color);">●</span> 모집단 (전체 학생들) &nbsp;&nbsp;
+                    <span style="color: var(--sample-color);">●</span> 표본 (선택된 학생들)
+                </p>
+            </div>
+
+            <div class="step-by-step">
+                <h3>🔍 전수조사 vs 표본조사</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <h4>📊 전수조사 (Census)</h4>
+                        <ul style="padding-left: 20px;">
+                            <li><strong>장점:</strong> 100% 정확한 정보</li>
+                            <li><strong>단점:</strong> 시간, 비용, 노력 많이 필요</li>
+                            <li><strong>현실:</strong> 거의 불가능</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4>🎯 표본조사 (Sample Survey)</h4>
+                        <ul style="padding-left: 20px;">
+                            <li><strong>장점:</strong> 시간, 비용 절약</li>
+                            <li><strong>단점:</strong> 불확실성 존재</li>
+                            <li><strong>현실:</strong> 대부분의 연구에서 사용</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="interactive-demo">
+                <h3>🎮 모집단-표본 이해하기 퀴즈</h3>
+                <p><strong>문제:</strong> 한국 고등학생들의 스마트폰 사용 시간을 조사한다면?</p>
+                <div style="margin: 20px 0;">
+                    <button class="demo-button" onclick="showAnswer('population')">모집단은?</button>
+                    <button class="demo-button" onclick="showAnswer('sample')">표본은?</button>
+                </div>
+                <div id="quiz-result" class="demo-result" style="display: none;"></div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">[2장] 실험 vs 관찰연구 - 개입할까 말까?</h2>
+            <div class="wonjaemon-character wonjaemon-expression is-detective">
+                <svg viewBox="0 0 150 150"><use href="#wonjaemon-svg-base"/><use class="detective" href="#wonjaemon-face-detective"/></svg>
+            </div>
+            <div class="bubble speech">"집중력 음료의 효과를 알아보는 방법이 두 가지가 있네! 직접 음료를 나눠주는 방법과 그냥 관찰만 하는 방법... 뭐가 다를까?"</div>
+
+            <div class="experiment-box">
+                <h3>🔬 실험 vs 관찰연구의 차이점</h3>
+                <div class="comparison-grid">
+                    <div class="comparison-item experiment-item">
+                        <h4>🧪 실험 (Experiment)</h4>
+                        <p><strong>특징:</strong> 연구자가 직접 개입</p>
+                        <p><strong>방법:</strong> 처리(Treatment)를 무작위 배정</p>
+                        <p><strong>장점:</strong> 인과관계 규명 가능</p>
+                        <p><strong>예시:</strong> 학생들을 무작위로 나누어 음료/물 제공</p>
+                    </div>
+                    <div class="comparison-item observational-item">
+                        <h4>👀 관찰연구 (Observational Study)</h4>
+                        <p><strong>특징:</strong> 연구자가 개입하지 않음</p>
+                        <p><strong>방법:</strong> 기존 상황을 관찰</p>
+                        <p><strong>장점:</strong> 윤리적 문제 적음</p>
+                        <p><strong>예시:</strong> 음료 마시는 학생 vs 안 마시는 학생 비교</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bubble thought">"실험은 '원인과 결과'를 확실히 알 수 있지만, 관찰연구는 '연관성'만 알 수 있어..."</div>
+
+            <div class="english-box">
+                <h3>🌟 AP 시험 핵심 영어 표현</h3>
+                <div class="comparison-grid">
+                    <div style="text-align: center;">
+                        <h4>🧪 실험 결과</h4>
+                        <p><span class="english-term">"The drink CAUSES improved concentration"</span></p>
+                        <p>"음료가 집중력을 <span class="highlight">원인적으로</span> 높인다"</p>
+                        <p><strong>키워드:</strong> Causation, Cause-and-effect</p>
+                    </div>
+                    <div style="text-align: center;">
+                        <h4>👀 관찰연구 결과</h4>
+                        <p><span class="english-term">"The drink is ASSOCIATED with improved concentration"</span></p>
+                        <p>"음료와 집중력이 <span class="highlight">연관</span>되어 있다"</p>
+                        <p><strong>키워드:</strong> Association, Correlation</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="explanation-box">
+                <h3>⚡ 인과관계 vs 상관관계</h3>
+                <table class="data-table">
+                    <tr>
+                        <th>구분</th>
+                        <th>실험</th>
+                        <th>관찰연구</th>
+                    </tr>
+                    <tr>
+                        <td><strong>결과 해석</strong></td>
+                        <td><span class="english-term">Causation</span><br>"음료가 집중력을 <span class="highlight">원인적으로</span> 높인다"</td>
+                        <td><span class="english-term">Association</span><br>"음료와 집중력이 <span class="highlight">연관</span>되어 있다"</td>
+                    </tr>
+                    <tr>
+                        <td><strong>확실성</strong></td>
+                        <td>높음 (인과관계 입증)</td>
+                        <td>낮음 (혼란변수 가능성)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>혼란변수</strong></td>
+                        <td>무작위 배정으로 통제</td>
+                        <td>통제 어려움</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="tip-box">
+                <h3>⚠️ 혼란변수 (Confounding Variable)</h3>
+                <p><strong>정의:</strong> 설명변수와 반응변수 모두에 영향을 주는 제3의 변수</p>
+                <p><strong>예시:</strong> 집중력 음료를 마시는 학생들이 원래부터 공부를 열심히 하는 학생들일 수 있음</p>
+                <p><strong>문제:</strong> 진짜 원인이 음료인지 다른 요인인지 구별 불가</p>
+            </div>
+
+            <div class="interactive-demo">
+                <h3>🎮 실험 vs 관찰연구 구별하기</h3>
+                <p><strong>시나리오:</strong> 새로운 수학 교육법의 효과를 알아보기 위해, 한 반은 새로운 방법으로, 다른 반은 기존 방법으로 가르쳤다.</p>
+                <div style="margin: 20px 0;">
+                    <button class="demo-button" onclick="checkStudyType('experiment')">실험</button>
+                    <button class="demo-button" onclick="checkStudyType('observational')">관찰연구</button>
+                </div>
+                <div id="study-type-result" class="demo-result" style="display: none;"></div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">[3장] 표본 추출 방법들 - 공정하게 뽑는 법</h2>
+            <div class="wonjaemon-character wonjaemon-expression is-excited">
+                <svg viewBox="0 0 150 150"><use href="#wonjaemon-svg-base"/><use class="excited" href="#wonjaemon-face-excited"/></svg>
+            </div>
+            <div class="bubble speech">"이제 학생들을 뽑아야 하는데... 아무나 대충 뽑으면 안 되겠어! 공정하고 과학적으로 뽑는 방법들을 알아보자!"</div>
+
+            <div class="sample-box">
+                <h3>🎯 확률 표본 추출 방법들</h3>
+                <div class="sampling-methods">
+                    <div class="sampling-method">
+                        <h4>🎲 단순무작위표본 (SRS)</h4>
+                        <div class="sampling-visual">
+                             <div class="sampling-grid" id="srsGrid"></div>
+                        </div>
+                        <p><strong>방법:</strong> 모든 개체가 동일한 선택 확률을 가집니다. 마치 모자에서 이름을 뽑는 것과 같아요.</p>
+                        <p><strong>장점:</strong> 가장 기본적이고 공정합니다.</p>
+                        <button class="demo-button" onclick="simulateSRS()">SRS 시뮬레이션</button>
+                    </div>
+                    <div class="sampling-method">
+                        <h4>🏢 층화표본 (Stratified)</h4>
+                        <div class="sampling-visual">
+                            <div class="stratum-group stratum-1">
+                                <h4 style="color: #ffc107;">1학년</h4>
+                                <div class="stratum-dots" id="stratum1"></div>
+                            </div>
+                            <div class="stratum-group stratum-2">
+                                <h4 style="color: #3498db;">2학년</h4>
+                                <div class="stratum-dots" id="stratum2"></div>
+                            </div>
+                            <div class="stratum-group stratum-3">
+                                <h4 style="color: #27ae60;">3학년</h4>
+                                <div class="stratum-dots" id="stratum3"></div>
+                            </div>
+                        </div>
+                        <p><strong>방법:</strong> 모집단을 그룹(층)으로 나눈 후, 각 그룹에서 무작위로 일부를 선택합니다.</p>
+                        <p><strong>장점:</strong> 각 그룹의 특성을 잘 반영할 수 있습니다.</p>
+                        <button class="demo-button" onclick="simulateStratified()">층화표본 시뮬레이션</button>
+                    </div>
+                    <div class="sampling-method">
+                        <h4>🏫 군집표본 (Cluster)</h4>
+                        <div class="sampling-visual">
+                            <div class="cluster-container">
+                                <div class="cluster-group" id="clusterA">
+                                    <h4>A반</h4>
+                                    <div class="cluster-dots"></div>
+                                </div>
+                                <div class="cluster-group" id="clusterB">
+                                    <h4>B반</h4>
+                                    <div class="cluster-dots"></div>
+                                </div>
+                                <div class="cluster-group" id="clusterC">
+                                    <h4>C반</h4>
+                                    <div class="cluster-dots"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <p><strong>방법:</strong> 모집단을 그룹(군집)으로 나눈 후, 몇 개의 군집을 통째로 선택합니다.</p>
+                        <p><strong>장점:</strong> 비용과 시간을 절약할 수 있습니다.</p>
+                        <button class="demo-button" onclick="simulateCluster()">군집표본 시뮬레이션</button>
+                    </div>
+                    <div class="sampling-method">
+                        <h4>📏 체계적표본 (Systematic)</h4>
+                        <div class="sampling-visual">
+                            <div class="sampling-grid" id="systematicGrid"></div>
+                        </div>
+                        <p><strong>방법:</strong> 명단에서 일정한 간격(k번째)으로 선택합니다.</p>
+                        <p><strong>장점:</strong> 실행이 매우 쉽고 간단합니다.</p>
+                        <button class="demo-button" onclick="simulateSystematic()">체계적표본 시뮬레이션</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flow-diagram">
+                <h3>📋 SRS 설계 단계 (AP 시험용)</h3>
+                <div style="margin: 20px 0;">
+                    <div class="flow-step">
+                        <h4>1️⃣ Label</h4>
+                        <p>모집단의 각 개체에<br>고유 번호 부여</p>
+                    </div>
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-step">
+                        <h4>2️⃣ Randomize</h4>
+                        <p>무작위 과정으로<br>필요한 수만큼 선택</p>
+                    </div>
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-step">
+                        <h4>3️⃣ Select</h4>
+                        <p>선택된 번호에<br>해당하는 개체들이 표본</p>
+                    </div>
+                </div>
+                <div class="explanation-box" style="margin-top: 15px;">
+                    <p><strong>예시:</strong> 학교 500명 학생 중 100명 선택</p>
+                    <ul style="padding-left: 20px;">
+                        <li><strong>Label:</strong> 각 학생에게 001~500 번호 부여</li>
+                        <li><strong>Randomize:</strong> 무작위 숫자표나 계산기로 100개 번호 선택</li>
+                        <li><strong>Select:</strong> 선택된 번호의 학생들이 표본</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="tip-box">
+                <h3>⚠️ 피해야 할 표본 추출 방법</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <h4>🚫 편의표본 (Convenience)</h4>
+                        <p>가장 쉽게 접근할 수 있는 개체들만 선택</p>
+                        <p><strong>문제:</strong> 특정 유형만 포함될 가능성</p>
+                    </div>
+                    <div>
+                        <h4>🚫 자발적응답표본 (Voluntary Response)</h4>
+                        <p>스스로 참여하겠다고 나선 개체들만 선택</p>
+                        <p><strong>문제:</strong> 강한 의견을 가진 사람들만 참여</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="interactive-demo">
+                <h3>🎮 표본 추출 시뮬레이터</h3>
+                <p>모집단 크기와 표본 크기를 입력하여 SRS를 체험해보세요!</p>
+                <div>
+                    <input type="number" id="population-size" class="demo-input" placeholder="모집단 크기" value="500" min="10" max="1000">
+                    <input type="number" id="sample-size" class="demo-input" placeholder="표본 크기" value="50" min="5" max="100">
+                    <button class="demo-button" onclick="simulateSampling()">표본 추출하기</button>
+                </div>
+                <div id="sampling-result" class="demo-result" style="display: none;"></div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">[4장] 편향의 종류들 - 원재몬의 실수담</h2>
+            <div class="wonjaemon-character wonjaemon-expression is-confused">
+                <svg viewBox="0 0 150 150"><use href="#wonjaemon-svg-base"/><use class="confused" href="#wonjaemon-face-confused"/></svg>
+            </div>
+            <div class="bubble speech">"어? 무작위로 뽑았는데도 결과가 이상해... 뭔가 한쪽으로 기울어진 것 같아. 내가 뭘 놓쳤을까?"</div>
+
+            <div class="bias-box">
+                <h3>⚖️ 편향(Bias)이란?</h3>
+                <p><strong>정의:</strong> 연구 결과가 실제와 다르게 한쪽으로 기울어지는 현상</p>
+                <p><strong>비유:</strong> 기울어진 저울처럼 공정하지 않은 결과</p>
+                <p><strong>문제:</strong> 잘못된 결론으로 이어질 수 있음</p>
+            </div>
+
+            <div class="bias-story">
+                <h3>📖 원재몬의 편향 실수 스토리</h3>
+                <div class="wonjaemon-character wonjaemon-expression is-thinking" style="width: 120px; float: left; margin: 0 20px 20px 0;">
+                    <svg viewBox="0 0 150 150"><use href="#wonjaemon-svg-base"/><use class="thinking" href="#wonjaemon-face-thinking"/></svg>
+                </div>
+                <p><strong>1일차:</strong> 원재몬이 학교 앞에서 집중력 음료 설문조사를 했다. "이상해... 응답자 대부분이 음료를 좋아한다고 하네?"</p>
+                <p><strong>2일차:</strong> 온라인으로 설문을 보냈는데 10%만 답장이 왔다. "왜 이렇게 적게 응답하지?"</p>
+                <p><strong>3일차:</strong> "이 놀라운 음료가 도움이 되었나요?"라고 물었더니 모두 "네"라고 답했다. "뭔가 이상한데..."</p>
+                <p><strong>4일차:</strong> 스마트폰 앱으로만 설문했더니 할아버지, 할머니들 의견이 하나도 없었다. "아하! 이제 알겠어!"</p>
+            </div>
+
+            <div class="bias-types">
+                <div class="bias-type">
+                    <h4>🚫 과소포함 (Undercoverage)</h4>
+                    <p><strong>원재몬의 실수:</strong> 스마트폰 앱으로만 설문</p>
+                    <p><strong>문제:</strong> 특정 그룹이 표본에 포함될 기회가 없거나 적음</p>
+                    <p><strong>예시:</strong> 온라인 설문 → 인터넷 사용 안 하는 사람들 제외</p>
+                    <p><strong>결과:</strong> 표본이 모집단을 제대로 대표하지 못함</p>
+                </div>
+                <div class="bias-type">
+                    <h4>📵 무응답 (Nonresponse)</h4>
+                    <p><strong>원재몬의 실수:</strong> 설문 보냈는데 10%만 응답</p>
+                    <p><strong>문제:</strong> 선택된 사람들이 응답하지 않음</p>
+                    <p><strong>예시:</strong> 설문지를 보냈는데 20%만 답장</p>
+                    <p><strong>결과:</strong> 응답자와 무응답자가 체계적으로 다를 수 있음</p>
+                </div>
+                <div class="bias-type">
+                    <h4>🎭 응답편향 (Response Bias)</h4>
+                    <p><strong>원재몬의 실수:</strong> 면대면 인터뷰에서 학생들이 솔직하지 않음</p>
+                    <p><strong>문제:</strong> 실제와 다르게 응답</p>
+                    <p><strong>예시:</strong> 사회적으로 바람직한 답변, 기억 오류</p>
+                    <p><strong>결과:</strong> 진실과 다른 정보 수집</p>
+                </div>
+                <div class="bias-type">
+                    <h4>📝 질문문구편향 (Wording Bias)</h4>
+                    <p><strong>원재몬의 실수:</strong> "놀라운 효과의 음료가 도움이 되었나요?"</p>
+                    <p><strong>문제:</strong> 질문 방식이 특정 답변 유도</p>
+                    <p><strong>예시:</strong> 유도 질문, 감정적 표현 사용</p>
+                    <p><strong>결과:</strong> 편향된 응답 유발</p>
+                </div>
+            </div>
+
+            <div class="visual-demo">
+                <h3>🎨 편향 비교 예시</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div style="text-align: center;">
+                        <h4>❌ 편향된 질문</h4>
+                        <div style="background: #ffebee; padding: 15px; border-radius: 10px; border: 2px solid var(--error-color);">
+                            "이 놀라운 집중력 향상 음료가 학습 능력 개선에 도움이 되었나요?"
+                        </div>
+                    </div>
+                    <div style="text-align: center;">
+                        <h4>✅ 공정한 질문</h4>
+                        <div style="background: #e8f5e9; padding: 15px; border-radius: 10px; border: 2px solid var(--success-color);">
+                            "음료 섭취 후 집중력에 변화가 있었나요?"
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="interactive-demo">
+                <h3>🎮 편향 찾기 게임 - 다양한 시나리오</h3>
+                <div id="bias-game-container">
+                    <div class="bias-game-scenario">
+                        <div class="scenario-title">시나리오 1</div>
+                        <p><strong>상황:</strong> 학교 급식 만족도 조사를 급식실 앞에서 실시했다.</p>
+                        <div style="margin: 15px 0;">
+                            <button class="demo-button" onclick="identifyBias(1, 'undercoverage')">과소포함</button>
+                            <button class="demo-button" onclick="identifyBias(1, 'nonresponse')">무응답</button>
+                            <button class="demo-button" onclick="identifyBias(1, 'response')">응답편향</button>
+                            <button class="demo-button" onclick="identifyBias(1, 'wording')">질문문구편향</button>
+                        </div>
+                        <div id="bias-result-1" class="demo-result" style="display: none;"></div>
+                    </div>
+
+                    <div class="bias-game-scenario">
+                        <div class="scenario-title">시나리오 2</div>
+                        <p><strong>상황:</strong> "당신은 이 끔찍한 교통체증 문제 해결을 위해 지하철 요금 인상에 찬성하십니까?"</p>
+                        <div style="margin: 15px 0;">
+                            <button class="demo-button" onclick="identifyBias(2, 'undercoverage')">과소포함</button>
+                            <button class="demo-button" onclick="identifyBias(2, 'nonresponse')">무응답</button>
+                            <button class="demo-button" onclick="identifyBias(2, 'response')">응답편향</button>
+                            <button class="demo-button" onclick="identifyBias(2, 'wording')">질문문구편향</button>
+                        </div>
+                        <div id="bias-result-2" class="demo-result" style="display: none;"></div>
+                    </div>
+
+                    <div class="bias-game-scenario">
+                        <div class="scenario-title">시나리오 3</div>
+                        <p><strong>상황:</strong> 온라인 게임 이용 시간 조사를 위해 1000명에게 설문을 보냈는데 150명만 응답했다.</p>
+                        <div style="margin: 15px 0;">
+                            <button class="demo-button" onclick="identifyBias(3, 'undercoverage')">과소포함</button>
+                            <button class="demo-button" onclick="identifyBias(3, 'nonresponse')">무응답</button>
+                            <button class="demo-button" onclick="identifyBias(3, 'response')">응답편향</button>
+                            <button class="demo-button" onclick="identifyBias(3, 'wording')">질문문구편향</button>
+                        </div>
+                        <div id="bias-result-3" class="demo-result" style="display: none;"></div>
+                    </div>
+
+                    <div class="bias-game-scenario">
+                        <div class="scenario-title">시나리오 4</div>
+                        <p><strong>상황:</strong> 흡연 실태 조사에서 부모님 앞에서 직접 인터뷰를 진행했다.</p>
+                        <div style="margin: 15px 0;">
+                            <button class="demo-button" onclick="identifyBias(4, 'undercoverage')">과소포함</button>
+                            <button class="demo-button" onclick="identifyBias(4, 'nonresponse')">무응답</button>
+                            <button class="demo-button" onclick="identifyBias(4, 'response')">응답편향</button>
+                            <button class="demo-button" onclick="identifyBias(4, 'wording')">질문문구편향</button>
+                        </div>
+                        <div id="bias-result-4" class="demo-result" style="display: none;"></div>
+                    </div>
+
+                    <div class="bias-game-scenario">
+                        <div class="scenario-title">시나리오 5</div>
+                        <p><strong>상황:</strong> 스마트폰 사용 실태 조사를 유선전화로만 실시했다.</p>
+                        <div style="margin: 15px 0;">
+                            <button class="demo-button" onclick="identifyBias(5, 'undercoverage')">과소포함</button>
+                            <button class="demo-button" onclick="identifyBias(5, 'nonresponse')">무응답</button>
+                            <button class="demo-button" onclick="identifyBias(5, 'response')">응답편향</button>
+                            <button class="demo-button" onclick="identifyBias(5, 'wording')">질문문구편향</button>
+                        </div>
+                        <div id="bias-result-5" class="demo-result" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">[5장] 실험 설계의 4대 원칙 - 믿을 수 있는 실험 만들기</h2>
+            <div class="wonjaemon-character wonjaemon-expression is-detective">
+                <svg viewBox="0 0 150 150"><use href="#wonjaemon-svg-base"/><use class="detective" href="#wonjaemon-face-detective"/></svg>
+            </div>
+            <div class="bubble speech">"편향을 피하는 방법을 배웠으니, 이제 집중력 음료 실험을 제대로 설계해보자! 믿을 수 있는 결과를 얻으려면 4가지 원칙을 꼭 지켜야 해!"</div>
+
+            <div class="design-box">
+                <h3>🏗️ 실험 설계의 4대 원칙</h3>
+                <div class="design-principles">
+                    <div class="design-principle">
+                        <h4>⚖️ 비교 (Comparison)</h4>
+                        <p>실험군과 대조군을 비교</p>
+                        <p><strong>예시:</strong> 음료그룹 vs 물그룹</p>
+                        <p><span class="english-term">Control Group vs Treatment Group</span></p>
+                    </div>
+                    <div class="design-principle">
+                        <h4>🎲 무작위할당 (Random Assignment)</h4>
+                        <p>처리를 무작위로 배정</p>
+                        <p><strong>목적:</strong> 혼란변수 통제</p>
+                        <p><span class="english-term">Randomization</span></p>
+                    </div>
+                    <div class="design-principle">
+                        <h4>🎛️ 통제 (Control)</h4>
+                        <p>다른 변수들을 일정하게 유지</p>
+                        <p><strong>예시:</strong> 같은 시간, 장소, 조건</p>
+                        <p><span class="english-term">Control for Variables</span></p>
+                    </div>
+                    <div class="design-principle">
+                        <h4>🔄 반복 (Replication)</h4>
+                        <p>충분한 수의 실험 단위</p>
+                        <p><strong>목적:</strong> 우연 효과 줄이기</p>
+                        <p><span class="english-term">Sufficient Sample Size</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="experiment-box">
+                <h3>🧪 실험의 구성 요소</h3>
+                <table class="data-table">
+                    <tr>
+                        <th>용어</th>
+                        <th>영어</th>
+                        <th>정의</th>
+                        <th>집중력 음료 실험 예시</th>
+                    </tr>
+                    <tr>
+                        <td><strong>처리</strong></td>
+                        <td><span class="english-term">Treatment</span></td>
+                        <td>실험 단위에게 적용되는 조건</td>
+                        <td>집중력 음료 vs 물</td>
+                    </tr>
+                    <tr>
+                        <td><strong>실험 단위</strong></td>
+                        <td><span class="english-term">Experimental Unit</span></td>
+                        <td>처리를 받는 개체</td>
+                        <td>각각의 학생</td>
+                    </tr>
+                    <tr>
+                        <td><strong>설명 변수</strong></td>
+                        <td><span class="english-term">Explanatory Variable</span></td>
+                        <td>우리가 조작하는 변수</td>
+                        <td>음료 섭취 여부</td>
+                    </tr>
+                    <tr>
+                        <td><strong>반응 변수</strong></td>
+                        <td><span class="english-term">Response Variable</span></td>
+                        <td>우리가 측정하는 결과</td>
+                        <td>집중력 점수</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="step-by-step">
+                <h3>📋 집중력 음료 실험 설계</h3>
+                <ol style="padding-left: 20px;">
+                    <li><strong>실험 단위:</strong> 100명의 고등학생</li>
+                    <li><strong>처리:</strong> 집중력 음료 vs 물 (위약)</li>
+                    <li><strong>무작위 할당:</strong> 50명씩 두 그룹으로 무작위 배정</li>
+                    <li><strong>통제:</strong> 같은 시간, 장소, 문제 유형</li>
+                    <li><strong>측정:</strong> 10분간 수학 문제 푼 개수</li>
+                    <li><strong>비교:</strong> 두 그룹의 평균 점수 비교</li>
+                </ol>
+            </div>
+
+            <div class="explanation-box">
+                <h3>💊 비교 원칙을 위한 도구들</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <h4>💊 위약 (Placebo)</h4>
+                        <ul style="padding-left: 20px;">
+                            <li>효과 없는 가짜 처리</li>
+                            <li>심리적 효과 통제</li>
+                            <li>예: 물이나 설탕물</li>
+                            <li><span class="english-term">Placebo Effect</span> 방지</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4>👁️ 눈가림 (Blinding)</h4>
+                        <ul style="padding-left: 20px;">
+                            <li><span class="english-term">Single-blind</span>: 피험자만 모름</li>
+                            <li><span class="english-term">Double-blind</span>: 피험자+연구자 모름</li>
+                            <li>편향 방지 효과</li>
+                            <li>더 객관적인 결과</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="tip-box" style="margin-top: 15px;">
+                    <h4>🤔 왜 눈가림이 중요할까?</h4>
+                    <p><strong>Single-blind가 필요한 이유:</strong> 학생들이 자신이 집중력 음료를 마셨다는 것을 알면 심리적으로 더 집중하려고 노력할 수 있음 (위약 효과)</p>
+                    <p><strong>Double-blind가 필요한 이유:</strong> 연구자도 어떤 학생이 음료를 마셨는지 알면 무의식적으로 그 학생을 더 높게 평가할 수 있음 (연구자 편향)</p>
+                </div>
+            </div>
+
+            <div class="interactive-demo">
+                <h3>🎮 실험 설계 체크리스트</h3>
+                <p>다음 실험이 4대 원칙을 모두 만족하는지 확인해보세요!</p>
+                <div style="margin: 20px 0;">
+                    <label><input type="checkbox" id="comparison"> 비교 그룹이 있다 (Comparison)</label><br>
+                    <label><input type="checkbox" id="randomization"> 무작위 할당을 했다 (Random Assignment)</label><br>
+                    <label><input type="checkbox" id="control"> 다른 변수들을 통제했다 (Control)</label><br>
+                    <label><input type="checkbox" id="replication"> 충분한 수의 실험 단위가 있다 (Replication)</label><br>
+                </div>
+                <button class="demo-button" onclick="checkExperimentDesign()">설계 평가하기</button>
+                <div id="design-result" class="demo-result" style="display: none;"></div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">[6장] 고급 실험 설계 - 무작위할당을 더 똑똑하게</h2>
+            <div class="wonjaemon-character wonjaemon-expression is-excited">
+                <svg viewBox="0 0 150 150"><use href="#wonjaemon-svg-base"/><use class="excited" href="#wonjaemon-face-excited"/></svg>
+            </div>
+            <div class="bubble speech">"4대 원칙을 배웠으니, 이제 무작위할당을 더 효율적으로 하는 방법들을 알아보자! 특히 혼란변수를 더 잘 통제하는 방법들이야!"</div>
+
+            <div class="design-box">
+                <h3>🏗️ 무작위할당의 진화: 더 똑똑한 방법들</h3>
+                
+                <div class="flow-diagram">
+                    <h4>🎯 무작위할당 방법들의 목적</h4>
+                    <div style="margin: 20px 0;">
+                        <div class="flow-step" style="background: #e3f2fd;">
+                            <h5>기본 목표</h5>
+                            <p>혼란변수 통제</p>
+                        </div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-step" style="background: #f3e5f5;">
+                            <h5>더 똑똑하게</h5>
+                            <p>중요한 변수들을<br>미리 고려</p>
+                        </div>
+                        <span class="flow-arrow">→</span>
+                        <div class="flow-step" style="background: #e8f5e9;">
+                            <h5>최종 결과</h5>
+                            <p>더 정확한<br>처리 효과 측정</p>
+                        </div>
+                    </div>
+                </div>
+
+                <h4>1️⃣ 완전 무작위 설계 (Completely Randomized Design)</h4>
+                <div class="explanation-box">
+                    <p><strong>방법:</strong> 모든 실험 단위를 완전히 무작위로 처리 그룹에 배정</p>
+                    <p><strong>예시:</strong> 100명 학생을 무작위로 50명씩 음료/물 그룹에 배정</p>
+                    <p><strong>장점:</strong> 단순하고 이해하기 쉬움</p>
+                    <p><strong>단점:</strong> 중요한 요인들이 균등하게 배분되지 않을 수 있음</p>
+                    <p><span class="english-term">Completely Randomized Design (CRD)</span></p>
+                </div>
+
+                <h4>2️⃣ 블록 설계 (Block Design) - 혼란변수를 미리 차단!</h4>
+                <div class="explanation-box">
+                    <p><strong>핵심 아이디어:</strong> "이 변수가 결과에 영향을 줄 것 같은데, 미리 통제해버리자!"</p>
+                    <p><strong>방법:</strong> 비슷한 특성끼리 블록으로 묶은 후, 각 블록 내에서 무작위 배정</p>
+                    <p><strong>예시:</strong> 학년별로 블록을 만들고, 각 학년 내에서 음료/물 그룹 배정</p>
+                    <p><strong>왜 효과적인가?</strong> 학년이라는 혼란변수의 영향을 제거하여 음료 효과만 순수하게 측정</p>
+                    <p><span class="english-term">Randomized Block Design (RBD)</span></p>
+                </div>
+
+                <div class="bubble thought">"블록 설계는 마치 '같은 조건끼리 모아놓고 공정하게 경쟁시키기'와 같아!"</div>
+
+                <h4>3️⃣ 짝지은 쌍 설계 (Matched Pairs Design) - 개인차 완전 제거!</h4>
+                <div class="explanation-box">
+                    <p><strong>핵심 아이디어:</strong> "개인차가 가장 큰 혼란변수니까, 같은 사람이 두 처리를 다 받게 하자!"</p>
+                    <p><strong>방법:</strong> 한 실험 단위가 두 가지 처리를 모두 경험</p>
+                    <p><strong>예시:</strong> 같은 학생이 1일차에 음료, 3일차에 물을 마시고 각각 테스트</p>
+                    <p><strong>왜 강력한가?</strong> 개인차를 완벽하게 통제 (같은 사람이니까!)</p>
+                    <p><strong>주의사항:</strong> 순서 효과 방지를 위해 순서를 무작위로 배정</p>
+                    <p><span class="english-term">Matched Pairs Design</span></p>
+                </div>
+            </div>
+
+            <div class="visual-demo">
+                <h3>🎨 블록 설계 시각화</h3>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0;">
+                    <div style="background: #e3f2fd; padding: 15px; border-radius: 10px; text-align: center;">
+                        <h4>1학년 블록</h4>
+                        <p>200명 → 100명(음료) + 100명(물)</p>
+                        <p><small>학년 효과 통제됨</small></p>
+                    </div>
+                    <div style="background: #f3e5f5; padding: 15px; border-radius: 10px; text-align: center;">
+                        <h4>2학년 블록</h4>
+                        <p>150명 → 75명(음료) + 75명(물)</p>
+                        <p><small>학년 효과 통제됨</small></p>
+                    </div>
+                    <div style="background: #fff3e0; padding: 15px; border-radius: 10px; text-align: center;">
+                        <h4>3학년 블록</h4>
+                        <p>150명 → 75명(음료) + 75명(물)</p>
+                        <p><small>학년 효과 통제됨</small></p>
+                    </div>
+                </div>
+                <p style="text-align: center;"><strong>결과:</strong> 학년이라는 혼란변수를 통제하면서 음료 효과를 정확히 측정</p>
+            </div>
+
+            <div class="tip-box">
+                <h3>⚠️ 헷갈리기 쉬운 개념들 - 명확한 구분</h3>
+                <table class="data-table">
+                    <tr>
+                        <th>구분</th>
+                        <th>SRS vs 완전무작위설계</th>
+                        <th>블록 vs 군집</th>
+                    </tr>
+                    <tr>
+                        <td><strong>목적</strong></td>
+                        <td>표본 선택 vs 처리 배정</td>
+                        <td>혼란변수 통제 vs 비용 절약</td>
+                    </tr>
+                    <tr>
+                        <td><strong>사용 시점</strong></td>
+                        <td>연구 준비 vs 실험 진행</td>
+                        <td>실험 설계 vs 표본 추출</td>
+                    </tr>
+                    <tr>
+                        <td><strong>핵심 질문</strong></td>
+                        <td>"누구를 뽑을지" vs "뭘 줄지"</td>
+                        <td>"어떻게 통제할지" vs "어떻게 절약할지"</td>
+                    </tr>
+                    <tr>
+                        <td><strong>영어 용어</strong></td>
+                        <td><span class="english-term">SRS vs CRD</span></td>
+                        <td><span class="english-term">Block vs Cluster</span></td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="interactive-demo">
+                <h3>🎮 실험 설계 선택기</h3>
+                <p><strong>상황:</strong> 남학생과 여학생의 기초 체력이 다를 수 있는 상황에서 운동 프로그램의 효과를 테스트</p>
+                <div style="margin: 20px 0;">
+                    <button class="demo-button" onclick="chooseDesign('completely-randomized')">완전무작위설계</button>
+                    <button class="demo-button" onclick="chooseDesign('block')">블록설계</button>
+                    <button class="demo-button" onclick="chooseDesign('matched-pairs')">짝지은쌍설계</button>
+                </div>
+                <div id="design-choice-result" class="demo-result" style="display: none;"></div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">[에필로그] 원재몬의 데이터 수집 마스터 완성</h2>
+            <div class="wonjaemon-character wonjaemon-expression is-excited">
+                <svg viewBox="0 0 150 150"><use href="#wonjaemon-svg-base"/><use class="excited" href="#wonjaemon-face-excited"/></svg>
+            </div>
+            <div class="bubble speech">"와! 이제 집중력 음료의 효과를 과학적으로 검증할 수 있겠어! 데이터 수집의 모든 비밀을 터득했다!"</div>
+
+            <div class="explanation-box">
+                <h3>🎯 원재몬의 최종 실험 설계</h3>
+                <div class="step-by-step">
+                    <h4>📋 완벽한 집중력 음료 실험</h4>
+                    <ol style="padding-left: 20px;">
+                        <li><strong>모집단:</strong> 전국 고등학생</li>
+                        <li><strong>표본:</strong> 층화표본으로 각 지역에서 200명 선택</li>
+                        <li><strong>실험 설계:</strong> 성별 블록 설계 (남/여 각각 100명씩)</li>
+                        <li><strong>처리:</strong> 집중력 음료 vs 위약 (<span class="english-term">Double-blind</span>)</li>
+                        <li><strong>측정:</strong> 표준화된 집중력 테스트</li>
+                        <li><strong>분석:</strong> 두 그룹 평균 비교 및 통계적 유의성 검정</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="english-box">
+                <h3>🌟 AP 시험 필수 영어 용어 총정리</h3>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+                    <div>
+                        <h4>연구 유형</h4>
+                        <ul style="padding-left: 20px;">
+                            <li><span class="english-term">Experiment</span> - 실험</li>
+                            <li><span class="english-term">Observational Study</span> - 관찰연구</li>
+                            <li><span class="english-term">Causation</span> - 인과관계</li>
+                            <li><span class="english-term">Association</span> - 연관성</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4>표본 추출</h4>
+                        <ul style="padding-left: 20px;">
+                            <li><span class="english-term">Simple Random Sample (SRS)</span></li>
+                            <li><span class="english-term">Stratified Sample</span></li>
+                            <li><span class="english-term">Cluster Sample</span></li>
+                            <li><span class="english-term">Systematic Sample</span></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4>편향 유형</h4>
+                        <ul style="padding-left: 20px;">
+                            <li><span class="english-term">Undercoverage Bias</span></li>
+                            <li><span class="english-term">Nonresponse Bias</span></li>
+                            <li><span class="english-term">Response Bias</span></li>
+                            <li><span class="english-term">Wording Bias</span></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4>실험 설계</h4>
+                        <ul style="padding-left: 20px;">
+                            <li><span class="english-term">Completely Randomized Design</span></li>
+                            <li><span class="english-term">Randomized Block Design</span></li>
+                            <li><span class="english-term">Matched Pairs Design</span></li>
+                            <li><span class="english-term">Single-blind, Double-blind</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="visual-demo">
+                <h3>🌟 데이터 수집 마스터 체크리스트</h3>
+                <table class="data-table">
+                    <tr>
+                        <th>영역</th>
+                        <th>핵심 개념</th>
+                        <th>영어 용어</th>
+                        <th>주의사항</th>
+                    </tr>
+                    <tr>
+                        <td><strong>모집단 vs 표본</strong></td>
+                        <td>전체 vs 일부, 모수 vs 통계량</td>
+                        <td>Population vs Sample</td>
+                        <td>표본이 모집단을 대표해야 함</td>
+                    </tr>
+                    <tr>
+                        <td><strong>연구 유형</strong></td>
+                        <td>실험(인과관계) vs 관찰연구(연관성)</td>
+                        <td>Causation vs Association</td>
+                        <td>혼란변수 주의</td>
+                    </tr>
+                    <tr>
+                        <td><strong>표본 추출</strong></td>
+                        <td>SRS, 층화, 군집, 체계적</td>
+                        <td>SRS, Stratified, Cluster, Systematic</td>
+                        <td>편의표본, 자발적응답 피하기</td>
+                    </tr>
+                    <tr>
+                        <td><strong>편향</strong></td>
+                        <td>과소포함, 무응답, 응답편향, 질문문구편향</td>
+                        <td>Undercoverage, Nonresponse, Response, Wording</td>
+                        <td>편향 최소화 노력</td>
+                    </tr>
+                    <tr>
+                        <td><strong>실험 설계</strong></td>
+                        <td>비교, 무작위할당, 통제, 반복</td>
+                        <td>Comparison, Randomization, Control, Replication</td>
+                        <td>4대 원칙 모두 만족</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="quiz-box">
+                <h3>🏆 최종 마스터 퀴즈</h3>
+                <p><strong>종합 문제:</strong> 새로운 학습법의 효과를 검증하는 연구를 설계하세요!</p>
+                <div style="margin: 20px 0;">
+                    <button class="demo-button" onclick="showFinalQuiz()">퀴즈 시작</button>
+                </div>
+                <div id="final-quiz-result" class="demo-result" style="display: none;"></div>
+            </div>
+
+            <div class="bubble thought">"이제 지구의 어떤 데이터든 과학적으로 수집하고 분석할 수 있어! 통계학의 힘은 정말 대단해!"</div>
+
+            <div class="tip-box">
+                <h3>💡 AP 시험 대비 핵심 팁</h3>
+                <ul style="padding-left: 20px;">
+                    <li><strong>영어 용어 필수:</strong> Causation vs Association, Single-blind vs Double-blind</li>
+                    <li><strong>편향 식별:</strong> 각 편향 유형의 특징과 예시 숙지</li>
+                    <li><strong>실험 설계:</strong> 4대 원칙 모두 언급하기</li>
+                    <li><strong>SRS 설계:</strong> Label-Randomize-Select 단계 순서대로</li>
+                    <li><strong>설계 선택:</strong> 상황에 맞는 최적의 설계 방법 선택</li>
+                </ul>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        // 패널 애니메이션
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.panel').forEach(panel => {
+            observer.observe(panel);
+        });
+
+        // 모집단과 표본 시각화
+        function createPopulationVisualization() {
+            const populationContainer = document.getElementById('population-visualization');
+            const sampleContainer = document.getElementById('sample-visualization');
+            
+            if (!populationContainer || !sampleContainer) return;
+
+            // 모집단 점들 생성 (500개)
+            for (let i = 0; i < 500; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'population-dot';
+                dot.style.left = Math.random() * 95 + '%';
+                dot.style.top = Math.random() * 95 + '%';
+                populationContainer.appendChild(dot);
+            }
+            
+            // 표본 점들 생성 (50개)
+            for (let i = 0; i < 50; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'sample-dot';
+                dot.style.left = Math.random() * 95 + '%';
+                dot.style.top = Math.random() * 95 + '%';
+                sampleContainer.appendChild(dot);
+            }
+        }
+
+        // 표본 추출 방법 시각화 (Interactive)
+        function initializeSamplingGrids() {
+            // SRS Grid
+            const srsGrid = document.getElementById('srsGrid');
+            if (srsGrid) {
+                srsGrid.innerHTML = '';
+                for (let i = 0; i < 32; i++) {
+                    const dot = document.createElement('div');
+                    dot.className = 'sampling-dot dot-unselected';
+                    srsGrid.appendChild(dot);
+                }
+            }
+
+            // Systematic Grid
+            const systematicGrid = document.getElementById('systematicGrid');
+            if (systematicGrid) {
+                systematicGrid.innerHTML = '';
+                for (let i = 0; i < 32; i++) {
+                    const dot = document.createElement('div');
+                    dot.className = 'sampling-dot dot-unselected';
+                    systematicGrid.appendChild(dot);
+                }
+            }
+
+            // Stratified Sampling
+            ['stratum1', 'stratum2', 'stratum3'].forEach(id => {
+                const container = document.getElementById(id);
+                if (container) {
+                    container.innerHTML = '';
+                    for (let i = 0; i < 8; i++) {
+                        const dot = document.createElement('div');
+                        dot.className = 'sampling-dot dot-unselected';
+                        container.appendChild(dot);
+                    }
+                }
+            });
+
+            // Cluster Sampling
+            ['clusterA', 'clusterB', 'clusterC'].forEach(id => {
+                const container = document.querySelector(`#${id} .cluster-dots`);
+                if (container) {
+                    container.innerHTML = '';
+                    for (let i = 0; i < 6; i++) {
+                        const dot = document.createElement('div');
+                        dot.className = 'sampling-dot dot-unselected';
+                        container.appendChild(dot);
+                    }
+                }
+            });
+        }
+
+        // 표본 추출 시뮬레이션 함수들
+        function simulateSRS() {
+            const dots = document.querySelectorAll('#srsGrid .sampling-dot');
+            dots.forEach(dot => dot.className = 'sampling-dot dot-unselected');
+            const indices = [];
+            while(indices.length < 8) {
+                const rand = Math.floor(Math.random() * 32);
+                if(indices.indexOf(rand) === -1) indices.push(rand);
+            }
+            indices.forEach(index => {
+                if (dots[index]) dots[index].className = 'sampling-dot dot-selected';
+            });
+        }
+
+        function simulateStratified() {
+            ['stratum1', 'stratum2', 'stratum3'].forEach(id => {
+                const dots = document.querySelectorAll(`#${id} .sampling-dot`);
+                dots.forEach(dot => dot.className = 'sampling-dot dot-unselected');
+                const indices = [];
+                while(indices.length < 3) {
+                    const rand = Math.floor(Math.random() * 8);
+                    if(indices.indexOf(rand) === -1) indices.push(rand);
+                }
+                indices.forEach(index => {
+                    if (dots[index]) dots[index].className = 'sampling-dot dot-selected';
+                });
+            });
+        }
+
+        function simulateCluster() {
+            ['clusterA', 'clusterB', 'clusterC'].forEach(id => {
+                const cluster = document.getElementById(id);
+                if (!cluster) return;
+                const dots = cluster.querySelectorAll('.sampling-dot');
+                cluster.classList.remove('cluster-selected');
+                dots.forEach(dot => dot.className = 'sampling-dot dot-unselected');
+            });
+            const clusters = ['clusterA', 'clusterB', 'clusterC'];
+            const selectedClusters = [];
+            while(selectedClusters.length < 1) {
+                const rand = Math.floor(Math.random() * 3);
+                if(selectedClusters.indexOf(rand) === -1) selectedClusters.push(rand);
+            }
+            selectedClusters.forEach(index => {
+                const cluster = document.getElementById(clusters[index]);
+                if (!cluster) return;
+                const dots = cluster.querySelectorAll('.sampling-dot');
+                cluster.classList.add('cluster-selected');
+                dots.forEach(dot => dot.className = 'sampling-dot dot-selected');
+            });
+        }
+
+        function simulateSystematic() {
+            const dots = document.querySelectorAll('#systematicGrid .sampling-dot');
+            dots.forEach(dot => dot.className = 'sampling-dot dot-unselected');
+            const startIndex = Math.floor(Math.random() * 4);
+            for(let i = startIndex; i < 32; i += 4) {
+                if (dots[i]) dots[i].className = 'sampling-dot dot-selected';
+            }
+        }
+
+
+        // 퀴즈 함수들
+        function showAnswer(type) {
+            const result = document.getElementById('quiz-result');
+            if (type === 'population') {
+                result.innerHTML = `
+                    <h4>🌍 모집단 (Population)</h4>
+                    <p><strong>정답:</strong> 한국의 모든 고등학생</p>
+                    <p>우리가 정보를 얻고 싶어하는 전체 그룹이에요!</p>
+                `;
+            } else {
+                result.innerHTML = `
+                    <h4>🎯 표본 (Sample)</h4>
+                    <p><strong>정답:</strong> 실제로 조사한 일부 고등학생들 (예: 서울 5개 학교에서 각각 50명씩 250명)</p>
+                    <p>모집단에서 실제로 데이터를 수집하는 부분집합이에요!</p>
+                `;
+            }
+            result.style.display = 'block';
+        }
+
+        function checkStudyType(type) {
+            const result = document.getElementById('study-type-result');
+            if (type === 'experiment') {
+                result.innerHTML = `
+                    <h4>✅ 정답: 실험 (Experiment)</h4>
+                    <p><strong>이유:</strong> 연구자가 직접 교육법을 배정했기 때문입니다.</p>
+                    <p>연구자가 개입하여 처리(새로운 교육법 vs 기존 교육법)를 무작위로 할당했으므로 실험이에요!</p>
+                    <p><strong>결론:</strong> <span class="english-term">Causation</span> 관계를 입증할 수 있습니다.</p>
+                `;
+            } else {
+                result.innerHTML = `
+                    <h4>❌ 틀렸어요!</h4>
+                    <p>관찰연구(Observational Study)는 연구자가 개입하지 않고 기존 상황을 관찰하는 것입니다.</p>
+                    <p>이 경우 연구자가 직접 교육법을 배정했으므로 <strong>실험(Experiment)</strong>이에요!</p>
+                `;
+            }
+            result.style.display = 'block';
+        }
+
+        function simulateSampling() {
+            const popSize = parseInt(document.getElementById('population-size').value) || 500;
+            const sampleSize = parseInt(document.getElementById('sample-size').value) || 50;
+            
+            if (sampleSize > popSize) {
+                alert('표본 크기가 모집단 크기보다 클 수 없습니다!');
+                return;
+            }
+            
+            const sample = [];
+            const used = new Set();
+            
+            while (sample.length < sampleSize) {
+                const randomNum = Math.floor(Math.random() * popSize) + 1;
+                if (!used.has(randomNum)) {
+                    used.add(randomNum);
+                    sample.push(randomNum);
+                }
+            }
+            
+            sample.sort((a, b) => a - b);
+            
+            const result = document.getElementById('sampling-result');
+            result.innerHTML = `
+                <h4>📊 SRS 결과</h4>
+                <p><strong>모집단 크기:</strong> ${popSize}명</p>
+                <p><strong>표본 크기:</strong> ${sampleSize}명</p>
+                <p><strong>선택된 번호:</strong> ${sample.slice(0, 10).join(', ')}${sample.length > 10 ? '...' : ''}</p>
+                <p><strong>선택 확률:</strong> 각 개체가 선택될 확률 = ${sampleSize}/${popSize} = ${(sampleSize/popSize*100).toFixed(2)}%</p>
+            `;
+            result.style.display = 'block';
+        }
+
+        // 편향 찾기 게임 (다중 시나리오)
+        const biasAnswers = {
+            1: 'undercoverage', // 급식실 앞 조사
+            2: 'wording', // 끔찍한 교통체증 질문
+            3: 'nonresponse', // 150/1000 응답
+            4: 'response', // 부모님 앞 흡연 조사
+            5: 'undercoverage' // 유선전화로 스마트폰 조사
+        };
+
+        const biasExplanations = {
+            1: {
+                correct: "과소포함 (Undercoverage)",
+                explanation: "급식실 앞에서만 조사하면 도시락을 가져오는 학생들이나 급식을 먹지 않는 학생들이 조사에서 제외됩니다. 특정 그룹이 표본에 포함될 기회가 없어져요!"
+            },
+            2: {
+                correct: "질문문구편향 (Wording Bias)",
+                explanation: "'끔찍한'이라는 감정적 표현이 응답자의 답변을 특정 방향으로 유도합니다. 중립적인 질문이어야 해요!"
+            },
+            3: {
+                correct: "무응답 (Nonresponse)",
+                explanation: "1000명 중 150명만 응답한 것은 심각한 무응답 문제입니다. 응답자와 무응답자가 체계적으로 다를 수 있어요!"
+            },
+            4: {
+                correct: "응답편향 (Response Bias)",
+                explanation: "부모님 앞에서 흡연에 대해 질문하면 학생들이 사회적으로 바람직한 답변(흡연하지 않는다)을 할 가능성이 높습니다!"
+            },
+            5: {
+                correct: "과소포함 (Undercoverage)",
+                explanation: "유선전화로만 조사하면 유선전화가 없거나 주로 스마트폰만 사용하는 사람들이 조사에서 제외됩니다!"
+            }
+        };
+
+        function identifyBias(scenario, biasType) {
+            const result = document.getElementById(`bias-result-${scenario}`);
+            const correctAnswer = biasAnswers[scenario];
+            const explanation = biasExplanations[scenario];
+            
+            if (biasType === correctAnswer) {
+                result.innerHTML = `
+                    <h4>✅ 정답: ${explanation.correct}</h4>
+                    <p><strong>설명:</strong> ${explanation.explanation}</p>
+                `;
+            } else {
+                result.innerHTML = `
+                    <h4>❌ 다시 생각해보세요!</h4>
+                    <p>정답은 <strong>${explanation.correct}</strong>입니다.</p>
+                    <p><strong>힌트:</strong> ${explanation.explanation}</p>
+                `;
+            }
+            result.style.display = 'block';
+        }
+
+        function checkExperimentDesign() {
+            const comparison = document.getElementById('comparison').checked;
+            const randomization = document.getElementById('randomization').checked;
+            const control = document.getElementById('control').checked;
+            const replication = document.getElementById('replication').checked;
+            
+            const total = comparison + randomization + control + replication;
+            const result = document.getElementById('design-result');
+            
+            if (total === 4) {
+                result.innerHTML = `
+                    <h4>🎉 완벽한 실험 설계!</h4>
+                    <p>4대 원칙을 모두 만족하는 훌륭한 실험이에요!</p>
+                    <p>이제 <span class="english-term">Causation</span>을 입증할 수 있는 믿을 수 있는 결과를 얻을 수 있을 거예요!</p>
+                `;
+            } else {
+                result.innerHTML = `
+                    <h4>⚠️ 실험 설계 보완 필요</h4>
+                    <p>체크된 항목: ${total}/4</p>
+                    <p>모든 원칙을 만족해야 신뢰할 수 있는 실험이 됩니다!</p>
+                `;
+            }
+            result.style.display = 'block';
+        }
+
+        function chooseDesign(designType) {
+            const result = document.getElementById('design-choice-result');
+            if (designType === 'block') {
+                result.innerHTML = `
+                    <h4>✅ 최적 선택: 블록 설계 (Randomized Block Design)</h4>
+                    <p><strong>이유:</strong> 성별이 운동 능력에 영향을 줄 수 있는 혼란변수이므로, 남/여별로 블록을 만들어 통제하는 것이 좋습니다.</p>
+                    <p>각 성별 블록 내에서 운동 프로그램과 대조군을 무작위 배정하면 성별의 영향을 제거할 수 있어요!</p>
+                    <p><strong>결과:</strong> 더 정확한 처리 효과 측정 가능</p>
+                `;
+            } else if (designType === 'completely-randomized') {
+                result.innerHTML = `
+                    <h4>⚠️ 괜찮지만 더 좋은 방법이 있어요</h4>
+                    <p>완전무작위설계(Completely Randomized Design)도 가능하지만, 성별이라는 중요한 변수를 고려하지 않았어요.</p>
+                    <p>블록 설계(Randomized Block Design)를 사용하면 더 정확한 결과를 얻을 수 있습니다!</p>
+                `;
+            } else {
+                result.innerHTML = `
+                    <h4>❌ 적합하지 않아요</h4>
+                    <p>짝지은 쌍 설계(Matched Pairs Design)는 한 사람이 두 가지 처리를 모두 받는 경우에 사용해요.</p>
+                    <p>운동 프로그램은 장기간에 걸쳐 진행되므로 한 사람이 두 프로그램을 모두 하기 어려워요!</p>
+                `;
+            }
+            result.style.display = 'block';
+        }
+
+        function showFinalQuiz() {
+            const result = document.getElementById('final-quiz-result');
+            result.innerHTML = `
+                <h4>🎯 종합 설계 과제</h4>
+                <p><strong>상황:</strong> 새로운 온라인 학습법이 기존 교실 수업보다 효과적인지 검증</p>
+                <div style="text-align: left; margin-top: 15px;">
+                    <p><strong>고려사항:</strong></p>
+                    <ul style="padding-left: 20px;">
+                        <li>학년별로 학습 능력이 다를 수 있음</li>
+                        <li>충분한 표본 크기 필요</li>
+                        <li>공정한 비교 필요</li>
+                        <li>다른 변수들 통제 필요</li>
+                    </ul>
+                    <p><strong>권장 설계:</strong></p>
+                    <ul style="padding-left: 20px;">
+                        <li><strong>표본:</strong> 층화표본 (Stratified Sample) - 각 학년에서 무작위 선택</li>
+                        <li><strong>실험 설계:</strong> 학년별 블록 설계 (Randomized Block Design)</li>
+                        <li><strong>처리:</strong> 온라인 학습법 vs 교실 수업</li>
+                        <li><strong>눈가림:</strong> Single-blind (학생들은 비교 대상을 모르게)</li>
+                        <li><strong>측정:</strong> 표준화된 성취도 테스트</li>
+                        <li><strong>결론:</strong> <span class="english-term">Causation</span> 입증 가능</li>
+                    </ul>
+                </div>
+            `;
+            result.style.display = 'block';
+        }
+
+        // 원재몬 표정 변화
+        setInterval(() => {
+            const expressions = ['is-normal', 'is-thinking', 'is-surprised', 'is-excited'];
+            const characters = document.querySelectorAll('.wonjaemon-expression');
+            
+            characters.forEach(char => {
+                if (!char.classList.contains('is-detective')) {
+                    const currentExpression = expressions[Math.floor(Math.random() * expressions.length)];
+                    char.className = 'wonjaemon-expression ' + currentExpression;
+                }
+            });
+        }, 8000);
+
+        // 페이지 로드 시 시각화 생성
+        document.addEventListener('DOMContentLoaded', function() {
+            createPopulationVisualization();
+            initializeSamplingGrids();
+        });
+    </script></body></html>

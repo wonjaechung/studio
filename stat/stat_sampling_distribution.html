@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👽 데이터 탐정 원재몬의 모험: 표집분포</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Noto+Sans+KR:wght@400;700;900&display=swap');
+
+        :root {
+            --bg-deep-space: #0f0c29;
+            --bg-space-grad: linear-gradient(170deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            --text-light: #f0f2f5;
+            --text-dark: #2c3e50;
+            --accent-glow: #4facfe;
+            --accent-warm: #fa709a;
+            --accent-cool: #43e97b;
+            --wonjaemon-color-1: #4ecdc4;
+            --wonjaemon-color-2: #556270;
+            --warn-color: #ff9800;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: var(--bg-deep-space);
+            color: var(--text-light);
+            overflow-x: hidden;
+        }
+
+        .webtoon-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            color: var(--text-dark);
+        }
+
+        .panel {
+            padding: 60px 40px;
+            border-bottom: 4px solid #e9ecef;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+        }
+        
+        .panel.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .panel-title {
+            font-family: 'Do Hyeon', sans-serif;
+            font-size: 2.8em;
+            text-align: center;
+            margin-bottom: 40px;
+            line-height: 1.3;
+        }
+
+        .title-panel {
+            background: var(--bg-space-grad);
+            color: var(--text-light);
+            text-align: center;
+            padding: 80px 20px;
+            position: relative;
+        }
+        
+        .title-panel .panel-title {
+            text-shadow: 0 0 15px rgba(79, 172, 254, 0.7);
+        }
+
+        .title-panel .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+            margin-top: -20px;
+        }
+
+        .wonjaemon-character {
+            width: 180px;
+            margin: 40px auto;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        #wonjaemon-antenna-light {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { fill: #ff6b6b; r: 6; }
+            50% { fill: #ff8e8e; r: 7; }
+        }
+        
+        .wonjaemon-expression .normal, .wonjaemon-expression .thinking, .wonjaemon-expression .surprised, .wonjaemon-expression .detective { display: none; }
+        .wonjaemon-expression.is-normal .normal { display: block; }
+        .wonjaemon-expression.is-thinking .thinking { display: block; }
+        .wonjaemon-expression.is-surprised .surprised { display: block; }
+        .wonjaemon-expression.is-detective .detective { display: block; }
+
+
+        .bubble {
+            padding: 25px 30px;
+            border-radius: 25px;
+            margin: 20px 0;
+            position: relative;
+            font-size: 1.1em;
+            line-height: 1.7;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+        }
+
+        .speech {
+            background-color: #e3f2fd;
+        }
+
+        .speech::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50px;
+            width: 0;
+            height: 0;
+            border: 20px solid transparent;
+            border-top-color: #e3f2fd;
+            border-bottom: 0;
+            margin-left: -20px;
+            margin-bottom: -20px;
+        }
+        
+        .thought {
+            border: 3px dashed #a0c4e4;
+            background-color: #f8f9fa;
+            font-style: italic;
+        }
+        
+        .thought::after {
+            content: '...';
+            position: absolute;
+            bottom: -35px;
+            left: 30px;
+            letter-spacing: 4px;
+            font-size: 2em;
+            font-weight: bold;
+            color: #a0c4e4;
+        }
+        
+        .narration, .explanation-box, .step-by-step, .visual-demo {
+            padding: 25px;
+            border-radius: 20px;
+            margin: 25px 0;
+            font-size: 1.1em;
+            line-height: 1.7;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+        }
+        
+        .narration {
+            background-color: #f8f9fa;
+            border-left: 5px solid var(--accent-glow);
+            font-style: italic;
+        }
+        
+        .explanation-box {
+            background: linear-gradient(135deg, #e8f5e9, #d4edda);
+            border: 3px solid #28a745;
+            color: #155724;
+        }
+        
+        .step-by-step {
+            background: linear-gradient(135deg, #fff3e0, #ffe0b2);
+            border: 3px solid var(--warn-color);
+            color: #e65100;
+        }
+        
+        .visual-demo {
+            background: linear-gradient(135deg, #f3e5f5, #e1bee7);
+            border: 3px solid #9c27b0;
+            color: #4a148c;
+        }
+
+        .population-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(30px, 1fr));
+            gap: 10px;
+            padding: 20px;
+            margin: 30px 0;
+            background-color: #f1f3f5;
+            border-radius: 15px;
+        }
+        .person-icon {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background-color: #ced4da;
+            transition: all 0.5s ease;
+        }
+        .person-icon.sample {
+            background-color: var(--wonjaemon-color-1);
+            transform: scale(1.2);
+            box-shadow: 0 0 10px var(--wonjaemon-color-1);
+        }
+
+        .highlight {
+            background: linear-gradient(120deg, #a8edea 0%, #fed6e3 100%);
+            padding: 3px 8px;
+            border-radius: 8px;
+            font-weight: 700;
+        }
+        
+        .math-box {
+            background-color: #fff9db;
+            border: 2px solid #ffe8a3;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 30px 0;
+            text-align: center;
+            font-size: 1.2em;
+            font-family: 'Do Hyeon', sans-serif;
+            color: #594a00;
+        }
+        
+        .bell-curve-container {
+            width: 100%;
+            margin: 30px 0;
+            position: relative;
+        }
+        
+        .curve-comparison-container {
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-end;
+            gap: 20px;
+            height: 220px;
+        }
+        
+        .curve-wrapper {
+            flex: 1;
+            text-align: center;
+        }
+
+        .curve-wrapper svg {
+            width: 100%;
+            max-width: 300px;
+        }
+        
+        .curve-wrapper p {
+            font-family: 'Do Hyeon', sans-serif;
+            font-size: 1.2em;
+            margin-top: 10px;
+        }
+
+        #bell-curve-path {
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: draw-curve 2s ease-out forwards;
+        }
+
+        @keyframes draw-curve {
+            to { stroke-dashoffset: 0; }
+        }
+        
+        .god-character, .detective-character {
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        .god-character span, .detective-character span {
+            font-size: 5em;
+            filter: drop-shadow(0 5px 10px rgba(0,0,0,0.2));
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 30px 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        .comparison-table th, .comparison-table td {
+            padding: 15px;
+            text-align: center;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .comparison-table thead {
+            font-family: 'Do Hyeon', sans-serif;
+            font-size: 1.1em;
+            background: var(--bg-space-grad);
+            color: var(--text-light);
+        }
+        .comparison-table tbody tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        .comparison-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .z-table-vis {
+            font-family: monospace;
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #dee2e6;
+            text-align: center;
+            overflow-x: auto;
+        }
+        .z-table-vis .highlight-cell {
+            background-color: #ffe0b2;
+            font-weight: bold;
+            border-radius: 5px;
+        }
+        
+        .net-visualization {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(to top, #e3f2fd, #ffffff);
+            border-radius: 15px;
+            margin: 30px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .net-svg {
+            width: 80%;
+            height: 80%;
+            overflow: visible;
+        }
+        .net-line {
+            stroke: var(--accent-glow);
+            stroke-width: 2;
+            stroke-dasharray: 5 5;
+            animation: net-cast 1.5s ease-out forwards;
+            transform-origin: center;
+            transform: scaleY(0);
+        }
+        .net-center-line {
+            stroke: var(--accent-warm);
+            stroke-width: 4;
+        }
+        .net-text {
+            font-family: 'Do Hyeon', sans-serif;
+            font-size: 16px;
+        }
+        @keyframes net-cast {
+            to {
+                transform: scaleY(1);
+            }
+        }
+
+
+        @media (max-width: 768px) {
+            .panel { padding: 40px 20px; }
+            .panel-title { font-size: 2.2em; }
+            .curve-comparison-container { flex-direction: column; height: auto; align-items: center;}
+        }
+    </style>
+</head>
+<body>
+
+    <div class="webtoon-container">
+
+        <svg width="0" height="0" style="position:absolute;">
+            <defs>
+                <g id="wonjaemon-svg-base">
+                    <path d="M 75,25 A 55,55 0 0 1 75,135 A 55,55 0 0 1 75,25" fill="#4ECDC4"/>
+                    <path d="M 75,25 A 55,55 0 0 0 75,135" fill="#44A08D"/>
+                    <line x1="75" y1="25" x2="75" y2="0" stroke="#556270" stroke-width="5"/>
+                    <circle id="wonjaemon-antenna-light" cx="75" cy="-5" r="6" fill="#ff6b6b"/>
+                </g>
+                <g id="wonjaemon-face-normal">
+                    <circle cx="55" cy="70" r="10" fill="#FFFFFF"/><circle cx="95" cy="70" r="10" fill="#FFFFFF"/>
+                    <circle cx="55" cy="70" r="5" fill="#2C3E50"/><circle cx="95" cy="70" r="5" fill="#2C3E50"/>
+                    <path d="M 65,100 Q 75,110 85,100" stroke="#FFFFFF" stroke-width="4" fill="none" stroke-linecap="round"/>
+                </g>
+                <g id="wonjaemon-face-thinking">
+                    <circle cx="55" cy="70" r="10" fill="#FFFFFF"/><circle cx="95" cy="70" r="10" fill="#FFFFFF"/>
+                    <circle cx="55" cy="70" r="5" fill="#2C3E50"/><circle cx="95" cy="70" r="5" fill="#2C3E50"/>
+                    <path d="M 65,105 L 85,105" stroke="#FFFFFF" stroke-width="4" fill="none" stroke-linecap="round"/>
+                </g>
+                <g id="wonjaemon-face-surprised">
+                    <circle cx="55" cy="70" r="12" fill="#FFFFFF"/><circle cx="95" cy="70" r="12" fill="#FFFFFF"/>
+                    <circle cx="55" cy="70" r="6" fill="#2C3E50"/><circle cx="95" cy="70" r="6" fill="#2C3E50"/>
+                    <ellipse cx="75" cy="110" rx="15" ry="10" fill="#FFFFFF"/>
+                </g>
+                <g id="wonjaemon-face-detective">
+                    <rect x="20" y="55" width="110" height="25" fill="#343a40" rx="10" ry="10"/>
+                    <path d="M 65,100 Q 75,105 85,100" stroke="#FFFFFF" stroke-width="4" fill="none" stroke-linecap="round"/>
+                </g>
+            </defs>
+        </svg>
+
+        <!-- ================================================================== -->
+        <!-- ======================= NEW FIRST SCENE ========================== -->
+        <!-- ================================================================== -->
+        <section class="panel is-visible">
+            <h2 class="panel-title">[1화] 첫 번째 미션: 미지의 파라미터(μ)를 찾아서</h2>
+            <div class="narration">
+                지구에 막 도착한 데이터 탐정 원재몬. 그의 탐사선 모니터에 첫 번째 의뢰가 도착했다. 그것은 바로... 지구인 전체의 '평균 키'라는 미지의 값을 알아내는 것!
+            </div>
+            <div class="wonjaemon-character wonjaemon-expression is-detective">
+                <svg viewBox="0 0 150 150"><use href="#wonjaemon-svg-base"/><use class="detective" href="#wonjaemon-face-detective"/></svg>
+            </div>
+            <div class="bubble speech">
+                "흥미롭군! 지구인 전체의 평균 키라... 하지만 수십억 명을 전부 측정할 순 없지. 그렇다면... 일부만 뽑아서 전체를 추리하는 수밖에! 이것이 바로 <span class="highlight">통계적 추론(Statistical Inference)</span>의 시작이겠군!"
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">[2화] 용어 정리 시간!</h2>
+            <div class="narration">미션을 시작하기 전, 원재몬은 핵심 용어부터 정리하기로 했다.</div>
+            <div class="explanation-box">
+                <p><strong>모수 (Parameter):</strong> 내가 진짜 알고 싶은 모집단(Population) 전체의 값. 이건 비밀에 싸인 '우주의 진리' 같은 거야!</p>
+                <ul style="padding-left:20px; margin-top:10px;">
+                    <li>Population Mean (μ), Population Proportion (p), Population Standard Deviation (σ)</li>
+                </ul>
+            </div>
+            <div class="step-by-step">
+                <p><strong>통계량 (Statistic):</strong> 내가 뽑은 표본(Sample)으로 계산한 값. 이건 내 손에 쥔 '유일한 단서'지!</p>
+                <ul style="padding-left:20px; margin-top:10px;">
+                    <li>Sample Mean (x̄), Sample Proportion (p̂), Sample Standard Deviation (s)</li>
+                </ul>
+            </div>
+            <div class="bubble speech">"좋아! 나의 목표는 Statistic(x̄)이라는 단서를 가지고 Parameter(μ)라는 진리를 추리해내는 것이다!"</div>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">[3화] 첫 번째 단서와 고민</h2>
+            <div class="narration">원재몬은 100명의 표본을 뽑아 평균 키를 계산했다.</div>
+            <div class="math-box">Sample Mean (x̄) = 175cm</div>
+            <div class="wonjaemon-character wonjaemon-expression is-thinking"><svg viewBox="0 0 150 150"><use href="#wonjaemon-svg-base"/><use class="thinking" href="#wonjaemon-face-thinking"/></svg></div>
+            <div class="bubble thought">"이건 내가 뽑은 100명의 평균일 뿐이잖아! 진짜 Population Mean(μ)이라고 할 수 있을까? 이 <span class="highlight">불확실성</span>... 어떡하지?"</div>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">[4화] 외계인의 초능력!</h2>
+            <div class="narration">이 불확실성의 패턴을 찾기 위해, 원재몬은 초능력을 사용하기로 결심했다!</div>
+            <div class="wonjaemon-character wonjaemon-expression is-normal"><svg viewBox="0 0 150 150"><use href="#wonjaemon-svg-base"/><use class="normal" href="#wonjaemon-face-normal"/></svg></div>
+            <div class="bubble speech">"내 초능력으로 <strong>'100명씩 뽑아서 평균 내기'를 100만 번 반복</strong>한다!"</div>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">[5화] 위대한 발견!</h2>
+            <div class="bell-curve-container">
+                <svg width="100%" height="200" viewBox="0 0 400 200">
+                    <path id="bell-curve-path" d="M 20,180 C 100,180 120,20 200,20 C 280,20 300,180 380,180" stroke="#4facfe" stroke-width="6" fill="none"/>
+                    <text x="200" y="100" text-anchor="middle" font-family="'Do Hyeon', sans-serif" font-size="24px" fill="#4facfe">표집분포!</text>
+                </svg>
+            </div>
+            <div class="wonjaemon-character wonjaemon-expression is-surprised"><svg viewBox="0 0 150 150"><use href="#wonjaemon-svg-base"/><use class="surprised" href="#wonjaemon-face-surprised"/></svg></div>
+            <div class="bubble speech">"이... 이럴 수가! 수많은 Sample Mean(x̄)들이 완벽한 <span class="highlight">Bell Shape</span>을 그리고 있어! 그리고 이 평균들의 평균이... 진짜 Population Mean(μ)과 똑같잖아!"</div>
+        </section>
+        
+        <section class="panel">
+            <h2 class="panel-title">[6화] 고민 해결의 실마리</h2>
+            <div class="narration">원재몬은 이 발견이 자신의 고민에 대한 답이 된다는 것을 깨달았다.</div>
+            <div class="explanation-box">
+                <p><strong>🤔 원재몬의 고민:</strong> "내가 뽑은 175cm가 진짜 Population Mean(μ)일까?"</p>
+                <p><strong>💡 새로운 발견의 의미:</strong></p>
+                <ul style="margin: 15px 0; padding-left: 25px; line-height: 1.8;">
+                    <li>내 Sample Mean 175cm는 수많은 가능성 중 <span class="highlight">단 하나</span>일 뿐이다.</li>
+                    <li>하지만 그 수많은 가능성들은 <span class="highlight">예측 가능한 패턴(Bell Shape)</span>을 따른다.</li>
+                    <li>그리고 그 패턴의 <span class="highlight">정중앙</span>이 바로 내가 찾던 **Population Mean(μ)**이다!</li>
+                </ul>
+            </div>
+            <div class="bubble speech">"그렇구나! 내 Sample Mean이 진짜 Population Mean과 정확히 같지는 않더라도, 이 Bell Shape 분포 덕분에 <span class="highlight">진짜 평균 근처에 있을 확률이 높다</span>는 걸 알 수 있게 됐어!"</div>
+            <div class="visual-demo">
+                <p><strong>🤔 왜 확률이 높을까?</strong></p>
+                <p>Bell Shape 그래프(정규분포)는 '확률'을 보여주는 그림이에요. 그래프 아래의 <span class="highlight">전체 면적은 1 (100%)</span>이죠. 그래프가 <span class="highlight">높이 솟아있을수록</span> 그 지점 근처에 더 많은 확률이 밀집되어 있다는 뜻이에요. 중심이 가장 높으니, 대부분의 Sample Mean은 진짜 Population Mean 근처에서 발견되는 거예요!</p>
+            </div>
+            <div class="narration">이 위대한 발견이 바로 <strong>중심극한정리(Central Limit Theorem, CLT)</strong>다! <br><strong>핵심:</strong> 표본의 크기가 충분히 크면(n≥30), Sample Mean의 분포(Sampling Distribution)는...
+                <ul style="margin-top:10px; padding-left:20px;">
+                    <li><strong>모양:</strong> 정규분포를 따른다.</li>
+                    <li><strong>중심:</strong> 그 평균은 Population Mean(μ)과 같다.</li>
+                    <li><strong>퍼짐:</strong> 그 표준편차는 σ/√n 이다.</li>
+                </ul>
+            </div>
+        </section>
+        
+        <section class="panel">
+            <h2 class="panel-title">[7화] 믿음직한 추정꾼!</h2>
+            <div class="narration">원재몬은 Sample Mean(x̄)이 왜 좋은 단서인지 더 깊이 파고들었다.</div>
+            <div class="visual-demo">
+                <p><strong>🎯 과녁 맞히기 비유: 불편추정량(Unbiased Estimator)</strong></p>
+                <p>Statistic을 '활'이라고 생각해보세요. 우리의 목표는 Parameter라는 '과녁의 중심'을 맞히는 거예요.</p>
+                <ul style="margin: 15px 0; padding-left: 25px; line-height: 1.8;">
+                    <li><strong>믿음직한 활 (Unbiased Estimator, 예: x̄, p̂):</strong> 쏠 때마다 과녁 중심을 정확히 맞히진 못해도, 여러 발 쏘면 화살들이 <span class="highlight">과녁 중심 주변에 골고루</span> 박혀요. 평균적으로는 정중앙을 노리는 거죠.</li>
+                    <li><strong>고장난 활 (Biased Estimator):</strong> 쏠 때마다 <span class="highlight">계속 한쪽으로만 빗나가는</span> 활이에요. 아무리 많이 쏴도 과녁 중심을 맞힐 수 없어요.</li>
+                </ul>
+            </div>
+            <div class="bubble speech">"아하! Sample Mean(x̄)이나 Sample Proportion(p̂)은 '믿음직한 활'이군요! 여러 번 뽑으면 결국 진실(Parameter)에 도달할 수 있으니, 믿고 쓸 수 있는 좋은 단서라는 뜻이네요!"</div>
+            <div class="explanation-box">
+                <p><strong>중요 포인트!</strong> 표본 크기(n)가 충분히 크면, 중심극한정리(CLT) 덕분에 표본 평균(x̄)과 표본 비율(p̂)의 표집분포 평균이 각각 모평균(μ)과 모비율(p)과 같아져요. 즉, 이들이 바로 그 <span class="highlight">믿음직한 활(Unbiased Estimator)</span>이 되는 거예요!</p>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">[8화] 흩어진 정도의 비밀</h2>
+            <div class="wonjaemon-character wonjaemon-expression is-thinking"><svg viewBox="0 0 150 150"><use href="#wonjaemon-svg-base"/><use class="thinking" href="#wonjaemon-face-thinking"/></svg></div>
+            <div class="bubble thought">"좋아, 진짜 Population Mean 근처에 있다는 건 알겠어. 그런데 '근처'라는 게 얼마나 가까운 거지? Sample Mean들이 얼마나 흩어져 있는지도 중요하지 않을까?"</div>
+            <div class="explanation-box">
+                <p><strong>🎯 바로 그거예요!</strong> 우리의 최종 목표는 **Population Mean(μ)**을 알아내는 것이지만, 그 과정에서 <span class="highlight">"내 Sample Mean(x̄)이 얼마나 믿을만한가?"</span>를 먼저 알아야 해요. 그 '믿음의 정도' 또는 '흩어진 정도'를 측정하는 것이 바로 <span class="highlight">Sampling Distribution의 Standard Deviation(σ_x̄)</span>입니다!</p>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">[9화] 뾰족한 분포 vs 퍼진 분포</h2>
+            <div class="narration">과녁 비유를 정규분포 그래프로 그려보면 이렇습니다.</div>
+            <div class="curve-comparison-container">
+                <div class="curve-wrapper">
+                    <svg viewBox="0 0 200 150">
+                        <path d="M 10,140 C 50,140 60,10 100,10 C 140,10 150,140 190,140" stroke="#28a745" stroke-width="4" fill="rgba(40, 167, 69, 0.2)"/>
+                    </svg>
+                    <p style="color: #28a745;">표준편차 작음 (뾰족!)<br>예측이 더 정확해요.</p>
+                </div>
+                <div class="curve-wrapper">
+                    <svg viewBox="0 0 200 150">
+                        <path d="M 10,140 C 50,140 80,80 100,80 C 120,80 150,140 190,140" stroke="#ff9800" stroke-width="4" fill="rgba(255, 152, 0, 0.2)"/>
+                    </svg>
+                    <p style="color: #ff9800;">표준편차 큼 (퍼짐!)<br>예측이 더 불확실해요.</p>
+                </div>
+            </div>
+            <div class="bubble speech">"아하! 표준편차가 작을수록 제가 뽑은 Sample Mean이 진짜 Population Mean에 가까울 확률이 높다는 뜻이군요! 그럼 이 'Sampling Distribution의 Standard Deviation'을 어떻게 계산하죠?"</div>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">[10화] 마법의 주문서 (1/2)</h2>
+            <div class="narration">중심극한정리라는 강력한 마법을 쓰기 전, 항상 주문 조건을 확인해야 한다!</div>
+            <div class="step-by-step">
+                <p><strong>📜 원재몬의 마법 주문서 (R.I.N 조건) 📜</strong></p>
+                <p><strong>✅ R - Random (무작위):</strong> 데이터가 무작위로 수집되었는가?</p>
+                <p>이것은 편향(bias)을 막고, 표본이 모집단을 잘 대표하도록 하기 위한 가장 중요한 첫 단계예요!</p>
+                <p><strong>예시:</strong> 학교 모든 학생의 평균 숙제 시간을 알고 싶다면, 공부 잘하는 반 학생만 조사하면 안돼요. 전교생 명부에서 무작위로 뽑아야 공평하겠죠?</p>
+            </div>
+             <div class="step-by-step">
+                <p><strong>✅ I - Independent (독립):</strong> 관측치들이 서로 영향을 주지 않는가?</p>
+                <p>한 명을 뽑는 것이 다른 한 명을 뽑는 것에 영향을 주면 안돼요. 이를 위해 <span class="highlight">10% 조건</span>을 확인해요.</p>
+                <p><strong>10% 조건이란?</strong> "전체 Population이 내가 뽑은 Sample 크기의 10배보다 크다" (N > 10n)는 뜻이에요. 모집단이 아주 크면, 몇 명 뽑는다고 해서 전체에 거의 영향이 없겠죠?</p>
+            </div>
+        </section>
+        
+        <section class="panel">
+            <h2 class="panel-title">[11화] 마법의 주문서 (2/2)</h2>
+             <div class="step-by-step">
+                <p><strong>✅ N - Normal (정규성):</strong> 표집분포가 정규분포를 따르는가?</p>
+                <p><strong>[평균(Means)의 정규성 확인법]</strong> - 셋 중 하나만 OK!</p>
+                <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>1. **Population이 정규분포:** 원래 데이터 자체가 정규분포라면, 표본 크기와 상관없이 무조건 OK!</li>
+                    <li>2. **CLT 마법:** Population이 정규분포가 아니더라도, 표본 크기가 충분히 크면(n ≥ 30) OK!</li>
+                    <li>3. **그래프 확인:** 표본 크기가 작을 때(n < 30), 표본 데이터의 그래프(히스토그램 등)가 심하게 치우치거나 특이점이 없으면 OK!</li>
+                </ul>
+                 <p><strong>[비율(Proportions)의 정규성 확인법]</strong></p>
+                 <ul style="margin: 10px 0; padding-left: 20px;">
+                    <li>**큰 표본 조건 (Large Counts):** '성공'과 '실패'의 수가 충분히 큰가? (np̂ ≥ 10 그리고 n(1-p̂) ≥ 10)</li>
+                </ul>
+            </div>
+            <div class="bubble speech">"아하! 평균과 비율 모두 마법을 쓰기 위한 조건이 있었군요! 특히 정규성을 확인하는 방법이 조금 다르네요!"</div>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">[12화] 두 가지 다른 상황의 등장</h2>
+            <div class="narration">조건을 확인했다면, 이제 표집분포의 표준편차를 계산할 차례! 방법은 우리가 가진 정보에 따라 두 가지로 나뉜다!</div>
+            <div class="step-by-step">
+                <p><strong>🎪 상황을 나누는 핵심 질문:</strong></p>
+                <p style="font-size: 1.3em; font-weight: 700; color: #e65100; margin: 15px 0; text-align:center;">
+                    "Population Standard Deviation(σ)을 알고 있는가?"
+                </p>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">💡 상황 1: 전지전능한 존재의 힌트</h2>
+            <div class="god-character"><span>✨</span></div>
+            <div class="narration"><strong>신성한 목소리:</strong> "원재몬이여, 비밀을 알려주마. 지구인 전체 키의 <span class="highlight">Population Standard Deviation(σ)은 10cm</span>이다! 이 신성한 정보를 사용하거라."</div>
+            <div class="explanation-box">
+                <p><strong>🎓 이론적 상황의 특징:</strong> Population Standard Deviation(σ)를 완벽하게 알고 있다고 가정하는, 주로 CLT의 원리를 확인하는 <strong>이론 문제</strong>에서 나타나는 상황입니다.</p>
+            </div>
+            <div class="math-box">Sampling Distribution의 Standard Deviation (σ_x̄) = σ / √n <br>= 10cm / √100 = <strong>1cm</strong></div>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">🕵️‍♂️ 상황 2: 외로운 탐정의 현실</h2>
+            <div class="wonjaemon-character wonjaemon-expression is-detective"><svg viewBox="0 0 150 150"><use href="#wonjaemon-svg-base"/><use class="detective" href="#wonjaemon-face-detective"/></svg></div>
+            <div class="bubble speech">"현실에 신은 없죠... 제가 가진 건 오직 100명의 데이터로 계산한 <span class="highlight">Sample Standard Deviation(s) = 9.5cm</span>가 전부입니다!"</div>
+            <div class="explanation-box">
+                <p><strong>🌍 현실적 상황의 특징:</strong> Population의 정보(σ)를 전혀 모르는, <strong>실제 연구나 데이터 분석</strong>에서 마주하는 상황입니다. 불완전한 Sample 정보(s)로 최선의 추정을 해야 합니다.</p>
+            </div>
+            <div class="step-by-step">
+                <p><strong>🤔 논리의 흐름을 따라와 보세요!</strong></p>
+                <ol style="margin: 15px 0; padding-left: 25px; line-height: 2;">
+                    <li>우리의 진짜 목표는 <span class="highlight">Sampling Distribution의 Standard Deviation(σ_x̄)</span>을 아는 것입니다.</li>
+                    <li>공식은 'σ / √n'인데, 가장 큰 문제는 우리가 <span class="highlight">σ를 모른다</span>는 점입니다.</li>
+                    <li>그래서 탐정처럼, 우리가 가진 유일한 단서인 <span class="highlight">Sample Standard Deviation(s)</span>를 σ 대신 사용해서 **'추정'**하는 것입니다.</li>
+                    <li>이렇게 '추정한 값'은 더 이상 진짜 'Standard Deviation'이 아니므로, 특별히 **Standard Error(SE)**라는 새 이름을 붙여줍니다.</li>
+                </ol>
+            </div>
+            <div class="math-box">Standard Error (SE_x̄) = s / √n <br>= 9.5cm / √100 = <strong>0.95cm</strong></div>
+        </section>
+        
+        <section class="panel">
+            <h2 class="panel-title">[13화] 새로운 미션: 비율의 세계!</h2>
+            <div class="narration">평균 키 미션을 마친 원재몬에게 새로운 미션이 주어졌다.</div>
+             <div class="wonjaemon-character wonjaemon-expression is-normal"><svg viewBox="0 0 150 150"><use href="#wonjaemon-svg-base"/><use class="normal" href="#wonjaemon-face-normal"/></svg></div>
+            <div class="bubble speech">"이번엔 <span class="highlight">'안경 쓴 지구인의 비율'</span>을 알아내야 한다! 원리는 비슷하겠지?"</div>
+            <div class="narration">원재몬은 200명의 표본을 뽑아, 그중 60명이 안경을 쓴 것을 발견했다.</div>
+            <div class="math-box">Sample Proportion (p̂) = 60 / 200 = 0.3</div>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">[14화] 비율의 표집분포</h2>
+            <div class="narration">원재몬은 다시 초능력을 사용해 '200명씩 뽑아 비율 구하기'를 100만 번 반복했다.</div>
+            <div class="bell-curve-container">
+                <svg width="100%" height="200" viewBox="0 0 400 200">
+                    <path d="M 20,180 C 100,180 120,20 200,20 C 280,20 300,180 380,180" stroke="#fa709a" stroke-width="6" fill="none"/>
+                    <text x="200" y="100" text-anchor="middle" font-family="'Do Hyeon', sans-serif" font-size="24px" fill="#fa709a">비율의 표집분포!</text>
+                </svg>
+            </div>
+            <div class="bubble speech">"역시! Sample Proportion(p̂)의 분포도 아름다운 Bell Shape이야! 중심극한정리는 평균뿐만 아니라 비율에도 적용되는구나!"</div>
+            <div class="narration">비율의 세계에서도 두 가지 상황이 존재한다.</div>
+            <div class="explanation-box">
+                <p><strong>💡 상황 1 (이론):</strong> 진짜 Population Proportion(p)를 알 때, <br><strong>Standard Deviation of Sampling Distribution of Proportions (σ_p̂) = √[p(1-p)/n]</strong></p>
+            </div>
+            <div class="step-by-step">
+                <p><strong>🕵️‍♂️ 상황 2 (실전):</strong> p를 모르므로 p̂으로 추정!<br><strong>Standard Error of Sampling Distribution of Proportions (SE_p̂) = √[p̂(1-p̂)/n]</strong></p>
+            </div>
+            <div class="math-box">우리 미션은 상황 2이므로, <br>SE_p̂ = √[(0.3)(0.7)/200] = √[0.21/200] ≈ <strong>0.0324</strong></div>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">[15화] 8단원 정복: 신뢰구간!</h2>
+            <div class="narration">원재몬은 7단원에서 배운 개념을 이용해, Parameter(μ 또는 p)가 어디쯤 있을지 '그물'을 던져보기로 했다. 이것이 바로 8단원의 핵심, **신뢰구간(Confidence Interval)**이다!</div>
+            <div class="explanation-box">
+                <p><strong>신뢰구간이란?</strong> "우리가 찾고 있는 진짜 값(Parameter)이 포함될 것이라고 믿는 그럴듯한 값들의 범위"를 의미해요.</p>
+                <p><strong>그물 던지기 비유:</strong></p>
+                <p>진짜 물고기(Parameter)를 잡으려고 해요. 내 단서인 조약돌(Statistic)을 물에 던지고, 그 주변으로 그물을 펼쳐 물고기를 잡는 거죠!</p>
+            </div>
+            <div class="visual-demo net-visualization">
+                 <svg class="net-svg" viewBox="0 0 400 150">
+                    <line class="net-center-line" x1="200" y1="150" x2="200" y2="50"/>
+                    <text class="net-text" x="200" y="40" text-anchor="middle">Statistic (x̄ or p̂)</text>
+                    <path class="net-line" d="M 50,50 C 150,150 250,150 350,50" stroke-dasharray="10 10" fill="none"/>
+                    <path class="net-line" d="M 50,50 C 100,100 300,100 350,50" stroke-dasharray="5 5" fill="none" style="animation-delay: 0.2s;"/>
+                    <line class="net-line" x1="50" y1="50" x2="350" y2="50" style="animation-delay: 0.4s;"/>
+                    <text class="net-text" x="125" y="100" text-anchor="middle">Margin of Error</text>
+                    <text class="net-text" x="275" y="100" text-anchor="middle">Margin of Error</text>
+                </svg>
+            </div>
+            <div class="bubble speech">"그럼 그물은 얼마나 넓게 펼쳐야 하죠? 그게 바로 오차범위(Margin of Error)군요!"</div>
+        </section>
+        
+        <section class="panel">
+            <h2 class="panel-title">[16화] 오차범위의 비밀</h2>
+            <div class="narration">오차범위(Margin of Error)는 그물의 크기를 결정하는 두 가지 요소로 이루어져 있다!</div>
+            <div class="math-box">
+                <p><strong>Margin of Error = Critical Value × Standard Error</strong></p>
+            </div>
+            <div class="step-by-step">
+                <p>1. <strong>Standard Error (표준오차):</strong> 내 단서(Statistic)가 얼마나 불확실한가? (파도가 얼마나 치는가?)</p>
+                <p>2. <strong>Critical Value (임계값):</strong> 내가 얼마나 강하게 확신하고 싶은가? (그물을 얼마나 넓게 펼칠 것인가?)</p>
+            </div>
+            <div class="bubble speech">"아하! 99% 확신하고 싶으면 95% 확신할 때보다 그물을 더 넓게(큰 Critical Value) 던져야겠군요!"</div>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">[17화] 비율 신뢰구간 (z-interval)</h2>
+            <div class="narration">먼저 안경 쓴 지구인 비율(p)에 대한 95% 신뢰구간을 구해보자.</div>
+            <div class="step-by-step">
+                <p>1. <strong>Statistic (p̂):</strong> 0.3</p>
+                <p>2. <strong>Standard Error (SE_p̂):</strong> 0.0324</p>
+                <p>3. <strong>Critical Value (z*):</strong> 95% 신뢰수준에 해당하는 z* 값은? → **Z-table**에서 찾자!</p>
+            </div>
+            <div class="visual-demo">
+                <p><strong>🍕 피자 비유로 '꼬리' 개념 이해하기!</strong></p>
+                <p>95% 신뢰구간은 '피자의 95%를 먹겠다'는 뜻이에요. 그럼 남는 건 5%죠? 공평하게 양쪽 끝을 조금씩 남겨두는 거예요. 그래서 <span class="highlight">한쪽 꼬리(tail)에는 2.5% (0.025)</span>씩 남게 된답니다!</p>
+            </div>
+            <div class="visual-demo" style="text-align:center;">
+                <p><strong>Z-table에서 1.96 찾기</strong></p>
+                <p>테이블 안에서 왼쪽 꼬리 확률인 0.0250을 찾자!</p>
+                <div class="z-table-vis">
+                    <pre>  z   ...  .05   .06   .07  ...</pre>
+                    <pre> ...  ...  ...   ...   ...  ...</pre>
+                    <pre>-1.9  ... .0256 <span class="highlight-cell">.0250</span> .0244 ...</pre>
+                </div>
+                <p style="margin-top:10px;">z-score -1.9와 0.06이 만나는 곳에 0.0250이 있다! 따라서 z* = 1.96</p>
+            </div>
+            <div class="math-box">
+                <p>0.3 ± (1.96 × 0.0324) = 0.3 ± 0.0635</p>
+                <p><strong>= (0.2365, 0.3635)</strong></p>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">[18화] 평균 신뢰구간 (t-interval)</h2>
+            <div class="narration">이번엔 지구인 평균 키(μ)에 대한 95% 신뢰구간을 구해보자.</div>
+            <div class="bubble speech">"잠깐! 평균의 경우, σ를 모르기 때문에 s를 썼죠? 이렇게 불확실성이 추가되면 더 이상 완벽한 정규분포(z-분포)를 쓸 수 없어요. 대신 꼬리가 더 두꺼운 <span class="highlight">t-분포</span>를 사용해야 합니다!"</div>
+            <div class="visual-demo">
+                <p><strong>자유도 (Degrees of Freedom, df) 란?</strong></p>
+                <p>t-분포의 모양을 결정하는 값이에요. 간단히 말해, '자유롭게 변할 수 있는 정보의 수'죠.</p>
+                <p><strong>예시:</strong> 친구 3명에게 아이스크림을 사주는데, 평균 가격이 3000원이라고 정해졌어요. 첫째(2500원)와 둘째(3000원)가 고르면, 셋째는 평균을 3000원으로 맞추기 위해 <span class="highlight">반드시 3500원짜리</span>를 골라야 해요. 자유롭게 고를 수 있는 건 2명뿐이죠! 그래서 df = n - 1 = 3 - 1 = 2 입니다.</p>
+            </div>
+            <div class="step-by-step">
+                <p>1. <strong>Statistic (x̄):</strong> 175cm</p>
+                <p>2. <strong>Standard Error (SE_x̄):</strong> 0.95cm</p>
+                <p>3. <strong>Critical Value (t*):</strong> df = 100 - 1 = 99인 t-분포에서 95% 신뢰수준에 해당하는 t* 값은? → **t-table**에서 찾자!</p>
+            </div>
+             <div class="visual-demo" style="text-align:center;">
+                <p><strong>t-table에서 1.984 찾기</strong></p>
+                <p>df = 99 (가장 가까운 100) 행과 95% 신뢰수준 열이 만나는 곳을 찾자!</p>
+                <div class="z-table-vis">
+                    <pre> df | ... | 90% |  95%  | 98% | ...</pre>
+                    <pre>----|-----|-----|-------|-----|----</pre>
+                    <pre>... | ... | ... |  ...  | ... | ...</pre>
+                    <pre>100 | ... |1.660|<span class="highlight-cell">1.984</span>|2.364| ...</pre>
+                </div>
+            </div>
+            <div class="math-box">
+                <p>175 ± (1.984 × 0.95) = 175 ± 1.8848</p>
+                <p><strong>= (173.1152 cm, 176.8848 cm)</strong></p>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h2 class="panel-title">[19화] 시험 꿀팁: 해석하기!</h2>
+            <div class="narration">원재몬은 신뢰구간을 구하는 것만큼, 그 의미를 정확히 해석하는 것이 중요하다고 강조했다.</div>
+            <div class="explanation-box">
+                <p><strong>⭐ Interpreting Confidence Intervals ⭐</strong></p>
+                <p>To interpret a C% confidence interval for an unknown parameter, say:</p>
+                <p>"We are <span class="highlight">C% confident</span> that the <span class="highlight">interval</span> from ____ to ____ <span class="highlight">captures</span> the <span class="highlight">actual value</span> of the [population parameter in context]."</p>
+                <p><strong>예시:</strong> "We are 95% confident that the interval from 173.1 cm to 176.9 cm captures the actual mean height of all humans."</p>
+            </div>
+            <div class="step-by-step">
+                <p><strong>⭐ Interpreting Confidence Levels ⭐</strong></p>
+                <p>To say that we are 95% confident is shorthand for:</p>
+                <p>"If we take <span class="highlight">many samples</span> of the same size from this population, about <span class="highlight">95% of them will result in an interval</span> that captures the actual parameter value."</p>
+            </div>
+            <div class="bubble speech">"Confidence Level은 '방법의 성공률'을, Confidence Interval은 '결과에 대한 믿음의 범위'를 말하는 거군요!"</div>
+        </section>
+        
+        <section class="panel">
+            <h2 class="panel-title">[20화] 최종 미션: 쌍둥이 연구?</h2>
+            <div class="narration">원재몬에게 마지막 미션이 도착했다. 바로 오메가-3 보충제의 효과를 분석하는 것!</div>
+            <div class="visual-demo">
+                <p><strong>쌍체 t-검정 (Paired t-test) 이란?</strong></p>
+                <p>같은 사람에게 '사전/사후' 검사를 하거나, 'A약/B약'을 모두 투여하는 것처럼, 데이터들이 자연스럽게 '짝'을 이루는 경우에 사용해요. 마치 쌍둥이를 연구하는 것과 비슷하죠!</p>
+                <p>핵심은, 각 그룹의 평균을 따로 보는 게 아니라, <span class="highlight">두 값의 '차이(Difference)'</span>를 새로운 데이터로 만들어 분석하는 거예요!</p>
+            </div>
+            <div class="bubble speech">"오메가-3를 먹기 전(플라시보)과 후의 짜증 점수 '차이'에만 집중하면, 이건 그냥 1-표본 t-검정(one-sample t-test)이랑 똑같아지겠군요!"</div>
+        </section>
+
+        <section class="panel title-panel">
+            <h2 class="panel-title">[마지막화] 우주로 돌아가는 길</h2>
+            <div class="wonjaemon-character wonjaemon-expression is-normal"><svg viewBox="0 0 150 150"><use href="#wonjaemon-svg-base"/><use class="normal" href="#wonjaemon-face-normal"/></svg></div>
+            <div class="bubble speech" style="color: var(--text-dark); background: var(--text-light);">"고마웠어, 지구인 친구들! 통계학은 불확실성 속에서 최선의 답을 찾는 위대한 학문이야! 너희도 이제 데이터 탐정이라고!"</div>
+            <div class="narration" style="background:none; border:none; color:white; text-align:center; margin-top:30px;">미션을 완수한 원재몬은 새로운 통계적 모험을 찾아 우주로 돌아갔다.</div>
+        </section>
+    </div>
+
+    <script>
+        const panels = document.querySelectorAll('.panel');
+        const observer = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                    const curve = entry.target.querySelector('#bell-curve-path');
+                    if (curve) {
+                        curve.style.animation = 'draw-curve 2s ease-out forwards';
+                    }
+                    const net = entry.target.querySelector('.net-line');
+                    if(net) {
+                        const allLines = entry.target.querySelectorAll('.net-line');
+                        allLines.forEach(line => line.style.animation = 'net-cast 1.5s ease-out forwards');
+                    }
+                }
+            });
+        }, {
+            threshold: 0.1
+        });
+        panels.forEach(panel => observer.observe(panel));
+
+        const grid = document.querySelector('.population-grid');
+        if (grid) {
+            const totalIcons = 120;
+            const sampleIndices = new Set();
+            while(sampleIndices.size < 10) {
+                sampleIndices.add(Math.floor(Math.random() * totalIcons));
+            }
+
+            for (let i = 0; i < totalIcons; i++) {
+                const icon = document.createElement('div');
+                icon.className = 'person-icon';
+                if (sampleIndices.has(i)) {
+                    icon.classList.add('sample');
+                }
+                grid.appendChild(icon);
+            }
+        }
+    </script>
+</body>
+</html>
+```
+

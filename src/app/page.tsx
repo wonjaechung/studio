@@ -128,7 +128,7 @@ export default function Home() {
     };
 
     // --- GAME & EXPLANATION CONTENT ---
-    const statsQuestions = [ { id: '2016-01', year: 2016, questionNumber: 1, questionText: 'The prices, in thousands of dollars, of 304 homes recently sold in a city are summarized in the histogram below. Based on the histogram, which of the following statements must be true?', answerOptions: [ { text: 'The minimum price is $250,000.', isCorrect: false }, { text: 'The maximum price is $2,500,000.', isCorrect: false }, { text: 'The median price is not greater than $750,000.', isCorrect: true }, { text: 'The mean price is between $500,000 and $750,000.', isCorrect: false }, { text: 'The upper quartile of the prices is greater than $1,500,000.', isCorrect: false }, ], unit: 'Unit 1: Exploring One-Variable Data', topic: 'Displaying and Describing Distributions' }, { id: '2016-02', year: 2016, questionNumber: 2, questionText: 'As part of a study on the relationship between the use of tanning booths and the occurrence of skin cancer, researchers reviewed the medical records of 1,436 people. The table in the console shows the data. Of the people in the study who had skin cancer, what fraction used a tanning booth?', answerOptions: [ { text: '190/265', isCorrect: false }, { text: '190/896', isCorrect: true }, { text: '190/1,436', isCorrect: false }, { text: '265/1,436', isCorrect: false }, { text: '896/1,436', isCorrect: false }, ], unit: 'Unit 4: Probability', topic: 'Conditional Probability and Independence' }, { id: '2016-03', year: 2016, questionNumber: 3, questionText: 'A researcher wants to determine whether there is convincing statistical evidence that more than 50 percent of households in a city gave a charitable donation. Let p represent the proportion of all households that gave a donation. Which of the following are appropriate hypotheses?', answerOptions: [ { text: 'H₀: p = 0.5 and Hₐ: p > 0.5', isCorrect: true }, { text: 'H₀: p = 0.5 and Hₐ: p ≠ 0.5', isCorrect: false }, { text: 'H₀: p = 0.5 and Hₐ: p < 0.5', isCorrect: false }, { text: 'H₀: p > 0.5 and Hₐ: p ≠ 0.5', isCorrect: false }, { text: 'H₀: p > 0.5 and Hₐ: p = 0.5', isCorrect: false }, ], unit: 'Unit 6: Inference for Proportions', topic: 'Significance Tests for Proportions' } ];
+    const statsQuestions = [ { id: '2016-01', year: 2016, questionNumber: 1, questionText: 'The prices, in thousands of dollars, of 304 homes recently sold in a city are summarized in the histogram below. Based on the histogram, which of the following statements must be true?', answerOptions: [ { text: 'The minimum price is $250,000.', isCorrect: false }, { text: 'The maximum price is $2,500,000.', isCorrect: false }, { text: 'The median price is not greater than $750,000.', isCorrect: true }, { text: 'The mean price is between $500,000 and $750,000.', isCorrect: false }, { text: 'The upper quartile of the prices is greater than $1,500,000.', isCorrect: false }, ], topic: 'Displaying and Describing Distributions', unit: 'Unit 1: Exploring One-Variable Data' }, { id: '2016-02', year: 2016, questionNumber: 2, questionText: 'As part of a study on the relationship between the use of tanning booths and the occurrence of skin cancer, researchers reviewed the medical records of 1,436 people. The table in the console shows the data. Of the people in the study who had skin cancer, what fraction used a tanning booth?', answerOptions: [ { text: '190/265', isCorrect: false }, { text: '190/896', isCorrect: true }, { text: '190/1,436', isCorrect: false }, { text: '265/1,436', isCorrect: false }, { text: '896/1,436', isCorrect: false }, ], topic: 'Conditional Probability and Independence', unit: 'Unit 4: Probability' }, { id: '2016-03', year: 2016, questionNumber: 3, questionText: 'A researcher wants to determine whether there is convincing statistical evidence that more than 50 percent of households in a city gave a charitable donation. Let p represent the proportion of all households that gave a donation. Which of the following are appropriate hypotheses?', answerOptions: [ { text: 'H₀: p = 0.5 and Hₐ: p > 0.5', isCorrect: true }, { text: 'H₀: p = 0.5 and Hₐ: p ≠ 0.5', isCorrect: false }, { text: 'H₀: p = 0.5 and Hₐ: p < 0.5', isCorrect: false }, { text: 'H₀: p > 0.5 and Hₐ: p ≠ 0.5', isCorrect: false }, { text: 'H₀: p > 0.5 and Hₐ: p = 0.5', isCorrect: false }, ], topic: 'Significance Tests for Proportions', unit: 'Unit 6: Inference for Proportions' } ];
     function getExplanation(type: any, data: any) {
         switch (type) {
             case '1VarStats': return `Calculated one-variable statistics for the list '${data.listName}'.\nx̄: The sample mean.\nSx: The sample standard deviation.`;
@@ -182,7 +182,19 @@ export default function Home() {
         spreadsheetContainer.innerHTML = tableHTML;
         if(isEditing) { const input = spreadsheetContainer.querySelector('input'); if(input) { input.focus(); input.select(); } }
     }
-    function addHistoryEntry(entry: any) { appState.calculator.history.unshift({ ...entry, explanation: getExplanation(entry.type, entry.data) }); renderCalculator(); }
+    function addHistoryEntry(entry: any, id: string | null = null) {
+      if (id) {
+          const existingEntry = appState.calculator.history.find((e: any) => e.id === id);
+          if (existingEntry) {
+              Object.assign(existingEntry, entry, { id }); // Update existing entry
+          } else {
+              appState.calculator.history.unshift({ ...entry, id }); // Add new if not found
+          }
+      } else {
+          appState.calculator.history.unshift({ ...entry, id: `entry_${Date.now()}_${Math.random()}` });
+      }
+      renderCalculator();
+  }
     function renderCalculator() {
         if (!calculatorDisplay) return;
         let historyHTML = '<div class="calculator-display">';
@@ -435,28 +447,40 @@ export default function Home() {
     function stopGame() { if (appState.game.timerInterval) clearInterval(appState.game.timerInterval); appState.game.isActive = false; gameDisplay!.classList.add('hidden'); gameTimer!.classList.add('hidden'); }
     function endGame() { const { correctAnswers } = appState.game; const scoreMessage = `Game Over! You scored ${correctAnswers} out of 5.`; addHistoryEntry({ input: "Game Finished", output: scoreMessage }); stopGame(); }
     function updateGameTimer() { const elapsed = Math.floor((Date.now() - appState.game.startTime) / 1000); const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0'); const seconds = (elapsed % 60).toString().padStart(2, '0'); gameTimer!.textContent = `${minutes}:${seconds}`; }
-    function nextQuestion() { const question = statsQuestions[Math.floor(Math.random() * statsQuestions.length)]; appState.game.question = question; appState.game.isWaitingForAI = false; let questionHTML = `<p class="font-bold mb-2">Question ${appState.game.questionsAnswered + 1} of 5:</p><p class="text-sm">${question.questionText}</p><div class="text-xs text-muted-foreground mt-1 mb-3">Unit: ${question.unit} | Topic: ${question.topic}</div><div class="grid grid-cols-1 gap-2 mt-4">`; question.answerOptions.forEach((opt: any, i: any) => { questionHTML += `<button class="btn text-left justify-start" data-action="answerQuestion" data-index="${i}">${String.fromCharCode(65 + i)}) ${opt.text}</button>`; }); questionHTML += `</div>`; gameDisplay!.innerHTML = questionHTML; gameDisplay!.classList.remove('hidden'); }
+    function nextQuestion() {
+        if (!appState.game.isActive) return;
+        const question = statsQuestions[Math.floor(Math.random() * statsQuestions.length)];
+        appState.game.question = question;
+        let questionHTML = `<p class="font-bold mb-2">Question ${appState.game.questionsAnswered + 1} of 5:</p><p class="text-sm">${question.questionText}</p><div class="text-xs text-muted-foreground mt-1 mb-3">Unit: ${question.unit} | Topic: ${question.topic}</div><div class="grid grid-cols-1 gap-2 mt-4">`;
+        question.answerOptions.forEach((opt: any, i: any) => {
+            questionHTML += `<button class="btn text-left justify-start" data-action="answerQuestion" data-index="${i}">${String.fromCharCode(65 + i)}) ${opt.text}</button>`;
+        });
+        questionHTML += `</div>`;
+        gameDisplay!.innerHTML = questionHTML;
+        gameDisplay!.classList.remove('hidden');
+    }
     
-    async function handleGameAnswer(answerIndex: any) {
-        if (appState.game.isWaitingForAI) return;
-
+    function handleGameAnswer(answerIndex: any) {
         const { question } = appState.game;
         const selectedOption = question.answerOptions[answerIndex];
         const correctAnswer = question.answerOptions.find((opt: any) => opt.isCorrect).text;
         
-        appState.game.isWaitingForAI = true;
-        gameDisplay!.innerHTML += `<div class="p-4 mt-4 bg-muted rounded-md text-center">Generating explanation with EXAONE...</div>`;
+        const explanationId = `explanation_${Date.now()}`;
+        addHistoryEntry({ 
+            input: `Q${appState.game.questionsAnswered + 1}: ${selectedOption.text}`,
+            output: `You answered: ${selectedOption.text}`,
+            explanation: "Generating explanation with EXAONE..." 
+        }, explanationId);
 
-        try {
-            const explanationRequest: ExplanationRequest = {
-                question: question.questionText,
-                options: question.answerOptions.map((o: any) => o.text),
-                userAnswer: selectedOption.text,
-                correctAnswer: correctAnswer,
-            };
+        // Fire off AI request but don't wait for it
+        const explanationRequest: ExplanationRequest = {
+            question: question.questionText,
+            options: question.answerOptions.map((o: any) => o.text),
+            userAnswer: selectedOption.text,
+            correctAnswer: correctAnswer,
+        };
 
-            const explanation = await generateExplanation(explanationRequest);
-            
+        generateExplanation(explanationRequest).then(explanation => {
             let explanationHTML = `<div class="calc-explanation">
                 <p class="font-bold text-lg mb-2">${explanation.isCorrect ? 'Correct! ✅' : 'Not quite... 🤔'}</p>
                 <p class="font-bold text-base mb-2">${explanation.concept}</p>
@@ -472,17 +496,24 @@ export default function Home() {
                 <p class="italic">${explanation.summary}</p>
             </div>`;
 
-            addHistoryEntry({ input: `Q${appState.game.questionsAnswered + 1}: ${selectedOption.text}`, output: explanationHTML, explanation: null });
+            // Update the specific history entry with the real explanation
+            addHistoryEntry({ 
+                input: `Q${appState.game.questionsAnswered + 1}: ${selectedOption.text}`,
+                output: explanation.isCorrect ? 'Correct!' : `Correct Answer: ${correctAnswer}`,
+                explanation: explanationHTML 
+            }, explanationId);
 
-            if (explanation.isCorrect) {
-                appState.game.correctAnswers++;
-            }
-
-        } catch (error) {
+        }).catch(error => {
             console.error("Error generating explanation:", error);
-            addHistoryEntry({ input: `Answer for Q${appState.game.questionsAnswered + 1}`, output: 'Error generating explanation.' });
-        }
+            addHistoryEntry({ 
+                input: `Answer for Q${appState.game.questionsAnswered + 1}`,
+                output: 'Error generating explanation.' 
+            }, explanationId);
+        });
 
+        if (selectedOption.isCorrect) {
+            appState.game.correctAnswers++;
+        }
 
         appState.game.questionsAnswered++;
         if (appState.game.questionsAnswered >= 5) {
@@ -490,7 +521,6 @@ export default function Home() {
         } else {
             nextQuestion();
         }
-        appState.game.isWaitingForAI = false;
         return true; 
     }
 

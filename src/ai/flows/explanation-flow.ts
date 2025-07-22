@@ -22,7 +22,7 @@ const prompt = ai.definePrompt({
   name: 'explanationPrompt',
   input: {schema: ExplanationRequestSchema},
   output: {schema: ExplanationResponseSchema},
-  prompt: `You are an expert AP Statistics teacher named EXAONE. Your task is to provide a clear, concise, and encouraging explanation for a multiple-choice question.
+  prompt: `You are an expert AP Statistics teacher named EXAONE. Your knowledge base includes extensive materials on designing studies, probability, sampling distributions, and inference. Your task is to provide a clear, concise, and encouraging explanation for a multiple-choice question.
 
 The user was presented with the following question:
 ---
