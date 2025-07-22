@@ -1,10 +1,21 @@
 
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { generateExplanation, ExplanationRequest } from '@/ai/flows/explanation-flow';
+
 
 export default function Home() {
+    const [isClient, setIsClient] = useState(false);
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
+
+
   useEffect(() => {
+    if (!isClient) {
+      return;
+    }
     // This is a workaround to avoid hydration errors with Next.js App Router.
     if (typeof window === 'undefined') {
       return;
@@ -45,7 +56,7 @@ export default function Home() {
       },
       calculator: { history: [] },
       graphing: { pendingPlot: null },
-      game: { isActive: false, startTime: null, timerInterval: null, question: null, questionsAnswered: 0, correctAnswers: 0 }
+      game: { isActive: false, startTime: null, timerInterval: null, question: null, questionsAnswered: 0, correctAnswers: 0, isWaitingForAI: false }
     };
 
     // --- STATISTICAL HELPERS (Full Implementation) ---
@@ -116,7 +127,7 @@ export default function Home() {
     };
 
     // --- GAME & EXPLANATION CONTENT ---
-    const statsQuestions = [ { id: "2016-01", year: 2016, questionNumber: 1, questionText: "The prices, in thousands of dollars, of 304 homes recently sold in a city are summarized in the histogram below. Based on the histogram, which of the following statements must be true?", answerOptions: [ { text: "The minimum price is $250,000.", isCorrect: false }, { text: "The maximum price is $2,500,000.", isCorrect: false }, { text: "The median price is not greater than $750,000.", isCorrect: true }, { text: "The mean price is between $500,000 and $750,000.", isCorrect: false }, { text: "The upper quartile of the prices is greater than $1,500,000.", isCorrect: false } ] }, { id: "2016-02", year: 2016, questionNumber: 2, questionText: "As part of a study on the relationship between the use of tanning booths and the occurrence of skin cancer, researchers reviewed the medical records of 1,436 people. The table in the console shows the data. Of the people in the study who had skin cancer, what fraction used a tanning booth?", answerOptions: [ { text: "190/265", isCorrect: false }, { text: "190/896", isCorrect: true }, { text: "190/1,436", isCorrect: false }, { text: "265/1,436", isCorrect: false }, { text: "896/1,436", isCorrect: false } ] }, { id: "2016-03", year: 2016, questionNumber: 3, questionText: "A researcher wants to determine whether there is convincing statistical evidence that more than 50 percent of households in a city gave a charitable donation. Let p represent the proportion of all households that gave a donation. Which of the following are appropriate hypotheses?", answerOptions: [ { text: "H₀: p = 0.5 and Hₐ: p > 0.5", isCorrect: true }, { text: "H₀: p = 0.5 and Hₐ: p ≠ 0.5", isCorrect: false }, { text: "H₀: p = 0.5 and Hₐ: p < 0.5", isCorrect: false }, { text: "H₀: p > 0.5 and Hₐ: p ≠ 0.5", isCorrect: false }, { text: "H₀: p > 0.5 and Hₐ: p = 0.5", isCorrect: false } ] } ];
+    const statsQuestions = [ { id: '2016-01', year: 2016, questionNumber: 1, questionText: 'The prices, in thousands of dollars, of 304 homes recently sold in a city are summarized in the histogram below. Based on the histogram, which of the following statements must be true?', answerOptions: [ { text: 'The minimum price is $250,000.', isCorrect: false }, { text: 'The maximum price is $2,500,000.', isCorrect: false }, { text: 'The median price is not greater than $750,000.', isCorrect: true }, { text: 'The mean price is between $500,000 and $750,000.', isCorrect: false }, { text: 'The upper quartile of the prices is greater than $1,500,000.', isCorrect: false }, ], unit: 'Unit 1: Exploring One-Variable Data', topic: 'Displaying and Describing Distributions' }, { id: '2016-02', year: 2016, questionNumber: 2, questionText: 'As part of a study on the relationship between the use of tanning booths and the occurrence of skin cancer, researchers reviewed the medical records of 1,436 people. The table in the console shows the data. Of the people in the study who had skin cancer, what fraction used a tanning booth?', answerOptions: [ { text: '190/265', isCorrect: false }, { text: '190/896', isCorrect: true }, { text: '190/1,436', isCorrect: false }, { text: '265/1,436', isCorrect: false }, { text: '896/1,436', isCorrect: false }, ], unit: 'Unit 4: Probability', topic: 'Conditional Probability and Independence' }, { id: '2016-03', year: 2016, questionNumber: 3, questionText: 'A researcher wants to determine whether there is convincing statistical evidence that more than 50 percent of households in a city gave a charitable donation. Let p represent the proportion of all households that gave a donation. Which of the following are appropriate hypotheses?', answerOptions: [ { text: 'H₀: p = 0.5 and Hₐ: p > 0.5', isCorrect: true }, { text: 'H₀: p = 0.5 and Hₐ: p ≠ 0.5', isCorrect: false }, { text: 'H₀: p = 0.5 and Hₐ: p < 0.5', isCorrect: false }, { text: 'H₀: p > 0.5 and Hₐ: p ≠ 0.5', isCorrect: false }, { text: 'H₀: p > 0.5 and Hₐ: p = 0.5', isCorrect: false }, ], unit: 'Unit 6: Inference for Proportions', topic: 'Significance Tests for Proportions' } ];
     function getExplanation(type: any, data: any) {
         switch (type) {
             case '1VarStats': return `Calculated one-variable statistics for the list '${data.listName}'.\nx̄: The sample mean.\nSx: The sample standard deviation.`;
@@ -183,6 +194,7 @@ export default function Home() {
         });
         historyHTML += '</div>';
         calculatorDisplay.innerHTML = historyHTML;
+        calculatorDisplay.scrollTop = calculatorDisplay.scrollHeight;
     }
     function closeModal() {
       appState.modal = null;
@@ -351,7 +363,7 @@ export default function Home() {
         const expression = (calculatorInput as HTMLInputElement).value.trim();
         if (expression === '') return;
         let commandHandled = false;
-        if (appState.game.isActive) { commandHandled = handleGameAnswer(expression); }
+        if (appState.game.isActive && !appState.game.isWaitingForAI) { commandHandled = handleGameAnswer(expression); }
         if (commandHandled) { /* Handled by game logic */ }
         else if (expression.startsWith("df = pd.read_csv")) {
             const match = expression.match(/'(.*?)'/);
@@ -418,12 +430,69 @@ export default function Home() {
 
     // --- GAME MODE LOGIC ---
     function toggleGameMode() { appState.game.isActive = !appState.game.isActive; if (appState.game.isActive) { startGame(); } else { stopGame(); } }
-    function startGame() { appState.game = { ...appState.game, isActive: true, startTime: Date.now(), questionsAnswered: 0, correctAnswers: 0 }; gameTimer!.classList.remove('hidden'); appState.game.timerInterval = setInterval(updateGameTimer, 1000); nextQuestion(); }
+    function startGame() { appState.game = { ...appState.game, isActive: true, startTime: Date.now(), questionsAnswered: 0, correctAnswers: 0, isWaitingForAI: false }; gameTimer!.classList.remove('hidden'); appState.game.timerInterval = setInterval(updateGameTimer, 1000); nextQuestion(); }
     function stopGame() { if (appState.game.timerInterval) clearInterval(appState.game.timerInterval); appState.game.isActive = false; gameDisplay!.classList.add('hidden'); gameTimer!.classList.add('hidden'); }
     function endGame() { const { correctAnswers } = appState.game; const scoreMessage = `Game Over! You scored ${correctAnswers} out of 5.`; addHistoryEntry({ input: "Game Finished", output: scoreMessage }); stopGame(); }
     function updateGameTimer() { const elapsed = Math.floor((Date.now() - appState.game.startTime) / 1000); const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0'); const seconds = (elapsed % 60).toString().padStart(2, '0'); gameTimer!.textContent = `${minutes}:${seconds}`; }
-    function nextQuestion() { const question = statsQuestions[Math.floor(Math.random() * statsQuestions.length)]; appState.game.question = question; let questionHTML = `<p class="font-bold mb-2">Question ${appState.game.questionsAnswered + 1} of 5:</p><p>${question.questionText}</p><div class="grid grid-cols-2 gap-2 mt-4">`; question.answerOptions.forEach((opt, i) => { questionHTML += `<button class="btn text-left" data-action="answerQuestion" data-index="${i}">${String.fromCharCode(65 + i)}) ${opt.text}</button>`; }); questionHTML += `</div>`; gameDisplay!.innerHTML = questionHTML; gameDisplay!.classList.remove('hidden'); }
-    function handleGameAnswer(answerIndex: any) { const { question } = appState.game; const selectedOption = question.answerOptions[answerIndex]; if (selectedOption.isCorrect) { appState.game.correctAnswers++; addHistoryEntry({ input: `Answer for Q${appState.game.questionsAnswered + 1}`, output: 'Correct!' }); } else { addHistoryEntry({ input: `Answer for Q${appState.game.questionsAnswered + 1}`, output: 'Incorrect.' }); } appState.game.questionsAnswered++; if (appState.game.questionsAnswered >= 5) { endGame(); } else { nextQuestion(); } return true; }
+    function nextQuestion() { const question = statsQuestions[Math.floor(Math.random() * statsQuestions.length)]; appState.game.question = question; appState.game.isWaitingForAI = false; let questionHTML = `<p class="font-bold mb-2">Question ${appState.game.questionsAnswered + 1} of 5:</p><p class="text-sm">${question.questionText}</p><div class="text-xs text-muted-foreground mt-1 mb-3">Unit: ${question.unit} | Topic: ${question.topic}</div><div class="grid grid-cols-1 gap-2 mt-4">`; question.answerOptions.forEach((opt: any, i: any) => { questionHTML += `<button class="btn text-left justify-start" data-action="answerQuestion" data-index="${i}">${String.fromCharCode(65 + i)}) ${opt.text}</button>`; }); questionHTML += `</div>`; gameDisplay!.innerHTML = questionHTML; gameDisplay!.classList.remove('hidden'); }
+    
+    async function handleGameAnswer(answerIndex: any) {
+        if (appState.game.isWaitingForAI) return;
+
+        const { question } = appState.game;
+        const selectedOption = question.answerOptions[answerIndex];
+        const correctAnswer = question.answerOptions.find((opt: any) => opt.isCorrect).text;
+        
+        appState.game.isWaitingForAI = true;
+        gameDisplay!.innerHTML += `<div class="p-4 mt-4 bg-muted rounded-md text-center">Generating explanation with EXAONE...</div>`;
+
+        try {
+            const explanationRequest: ExplanationRequest = {
+                question: question.questionText,
+                options: question.answerOptions.map((o: any) => o.text),
+                userAnswer: selectedOption.text,
+                correctAnswer: correctAnswer,
+            };
+
+            const explanation = await generateExplanation(explanationRequest);
+            
+            let explanationHTML = `<div class="calc-explanation">
+                <p class="font-bold text-lg mb-2">${explanation.isCorrect ? 'Correct! ✅' : 'Not quite... 🤔'}</p>
+                <p class="font-bold text-base mb-2">${explanation.concept}</p>
+                <p class="font-semibold mt-3 mb-1">How to solve:</p>
+                <ul class="list-disc pl-5 space-y-1">
+                    ${explanation.steps.map(step => `<li>${step}</li>`).join('')}
+                </ul>
+                <p class="font-semibold mt-3 mb-1">Why other options are incorrect:</p>
+                 <ul class="list-disc pl-5 space-y-1">
+                    ${explanation.distractors.map(d => `<li>${d}</li>`).join('')}
+                </ul>
+                <p class="font-semibold mt-3 mb-1">Key Takeaway:</p>
+                <p class="italic">${explanation.summary}</p>
+            </div>`;
+
+            addHistoryEntry({ input: `Q${appState.game.questionsAnswered + 1}: ${selectedOption.text}`, output: explanationHTML, explanation: null });
+
+            if (explanation.isCorrect) {
+                appState.game.correctAnswers++;
+            }
+
+        } catch (error) {
+            console.error("Error generating explanation:", error);
+            addHistoryEntry({ input: `Answer for Q${appState.game.questionsAnswered + 1}`, output: 'Error generating explanation.' });
+        }
+
+
+        appState.game.questionsAnswered++;
+        if (appState.game.questionsAnswered >= 5) {
+            endGame();
+        } else {
+            nextQuestion();
+        }
+        appState.game.isWaitingForAI = false;
+        return true; 
+    }
+
     actions.answerQuestion = (event: any) => { const index = event.target.dataset.index; handleGameAnswer(index); };
 
     // --- OTHER UTILS ---
@@ -444,21 +513,34 @@ export default function Home() {
 
     // --- INITIALIZATION ---
     function init() {
-      if (!menuBtn) return;
+      if (!menuBtn || !clearBtn || !spreadsheetContainer || !calculatorInput || !calculatorEnterBtn || !gameModeBtn || !exportCalcToggle || !exportGraphToggle || !graphPlotDiv || !graphingPanel || !graphContextMenu || !calculatorDisplay) {
+        return;
+      }
         // Event Listeners
         menuBtn.addEventListener('click', showStatisticsMenu);
-        clearBtn!.addEventListener('click', actions.showClearConfirmModal);
+        clearBtn.addEventListener('click', actions.showClearConfirmModal);
         document.body.addEventListener('click', handleAction);
-        spreadsheetContainer!.addEventListener('mousedown', (e) => { if (!(e.target as HTMLElement).matches('td, th[data-col]')) return; const col = parseInt((e.target as HTMLElement).dataset.col!); const row = parseInt((e.target as HTMLElement).dataset.row!); if (isNaN(col) || isNaN(row)) return; appState.spreadsheet.isEditing = false; appState.spreadsheet.activeCell = { col, row }; appState.spreadsheet.isSelecting = true; appState.spreadsheet.selectionStart = { col, row }; appState.spreadsheet.selectionEnd = { col, row }; renderSpreadsheet(); });
-        spreadsheetContainer!.addEventListener('mousemove', (e) => { if (!appState.spreadsheet.isSelecting || !(e.target as HTMLElement).matches('td, th[data-col]')) return; const col = parseInt((e.target as HTMLElement).dataset.col!); const row = parseInt((e.target as HTMLElement).dataset.row!); if (isNaN(col) || isNaN(row)) return; if (appState.spreadsheet.selectionEnd.col !== col || appState.spreadsheet.selectionEnd.row !== row) { appState.spreadsheet.selectionEnd = { col, row }; renderSpreadsheet(); } });
+        spreadsheetContainer.addEventListener('mousedown', (e) => { if (!(e.target as HTMLElement).matches('td, th[data-col]')) return; const col = parseInt((e.target as HTMLElement).dataset.col!); const row = parseInt((e.target as HTMLElement).dataset.row!); if (isNaN(col) || isNaN(row)) return; appState.spreadsheet.isEditing = false; appState.spreadsheet.activeCell = { col, row }; appState.spreadsheet.isSelecting = true; appState.spreadsheet.selectionStart = { col, row }; appState.spreadsheet.selectionEnd = { col, row }; renderSpreadsheet(); });
+        spreadsheetContainer.addEventListener('mousemove', (e) => { if (!appState.spreadsheet.isSelecting || !(e.target as HTMLElement).matches('td, th[data-col]')) return; const col = parseInt((e.target as HTMLElement).dataset.col!); const row = parseInt((e.target as HTMLElement).dataset.row!); if (isNaN(col) || isNaN(row)) return; if (appState.spreadsheet.selectionEnd.col !== col || appState.spreadsheet.selectionEnd.row !== row) { appState.spreadsheet.selectionEnd = { col, row }; renderSpreadsheet(); } });
         document.addEventListener('mouseup', () => { appState.spreadsheet.isSelecting = false; });
-        spreadsheetContainer!.addEventListener('dblclick', (e) => { if((e.target as HTMLElement).matches('td, th[data-col]')) { const { col, row } = appState.spreadsheet.activeCell; appState.spreadsheet.editValue = row === -1 ? (appState.spreadsheet.columns[col]?.name || '') : (appState.spreadsheet.columns[col]?.data[row] || ''); appState.spreadsheet.isEditing = true; renderSpreadsheet(); } });
-        spreadsheetContainer!.addEventListener('paste', handlePaste);
-        calculatorInput!.addEventListener('keydown', (e) => { if(e.key === 'Enter') handleCalculatorInput(); });
-        calculatorEnterBtn!.addEventListener('click', handleCalculatorInput);
-        gameModeBtn!.addEventListener('click', toggleGameMode);
+        spreadsheetContainer.addEventListener('dblclick', (e) => { 
+          if((e.target as HTMLElement).matches('td, th[data-col]')) {
+              const { col, row } = appState.spreadsheet.activeCell;
+              appState.spreadsheet.isEditing = true;
+              if (row === -1) {
+                  appState.spreadsheet.editValue = appState.spreadsheet.columns[col]?.name || '';
+              } else {
+                  appState.spreadsheet.editValue = appState.spreadsheet.columns[col]?.data[row] || '';
+              }
+              renderSpreadsheet(); 
+            }
+        });
+        spreadsheetContainer.addEventListener('paste', handlePaste);
+        calculatorInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') handleCalculatorInput(); });
+        calculatorEnterBtn.addEventListener('click', handleCalculatorInput);
+        gameModeBtn.addEventListener('click', toggleGameMode);
 
-        exportCalcToggle!.addEventListener('change', (e) => {
+        exportCalcToggle.addEventListener('change', (e) => {
             const isChecked = (e.target as HTMLInputElement).checked;
             setCalculatorDraggable(isChecked);
         });
@@ -478,7 +560,7 @@ export default function Home() {
             }
         });
 
-        graphPlotDiv!.addEventListener('dragstart', (e: DragEvent) => {
+        graphPlotDiv.addEventListener('dragstart', (e: DragEvent) => {
             if (graphPlotDiv!.getAttribute('draggable') !== 'true') {
                 e.preventDefault();
                 return;
@@ -492,7 +574,7 @@ export default function Home() {
             }
         });
 
-        calculatorDisplay!.addEventListener('dragstart', (e: DragEvent) => {
+        calculatorDisplay.addEventListener('dragstart', (e: DragEvent) => {
             if ((exportCalcToggle as HTMLInputElement).checked) {
                 let textHistory = "Wonjae's AP Stat Lab - Console History\n=========================================\n\n";
                 appState.calculator.history.slice().reverse().forEach((entry: any) => {
@@ -509,19 +591,19 @@ export default function Home() {
             }
         });
 
-        spreadsheetContainer!.addEventListener('dragstart', (e: DragEvent) => { if (!(e.target as HTMLElement).matches('th.col-header.in-selection')) { e.preventDefault(); return; } const { selectionStart, selectionEnd } = appState.spreadsheet; const minCol = Math.min(selectionStart!.col, selectionEnd!.col); const maxCol = Math.max(selectionEnd!.col, selectionStart!.col); let colIndices: number[] = []; for (let i = minCol; i <= maxCol; i++) { if(appState.spreadsheet.columns[i]?.name) colIndices.push(i); } if (colIndices.length === 0 || colIndices.length > 2) { showMessageModal("Drag one or two NAMED columns to plot."); e.preventDefault(); return; } e.dataTransfer!.setData('application/json', JSON.stringify(colIndices)); e.dataTransfer!.effectAllowed = 'copy'; });
-        graphingPanel!.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer!.dropEffect = 'copy'; graphingPanel!.classList.add('drag-over'); });
-        graphingPanel!.addEventListener('dragleave', () => { graphingPanel!.classList.remove('drag-over'); });
-        graphingPanel!.addEventListener('drop', (e: DragEvent) => { e.preventDefault(); graphingPanel!.classList.remove('drag-over'); const colIndices = JSON.parse(e.dataTransfer!.getData('application/json')); showPlotTypeMenu(colIndices); });
-        graphContextMenu!.addEventListener('click', (e) => { if ((e.target as HTMLElement).matches('[data-plottype]')) { const type = (e.target as HTMLElement).dataset.plottype; if (appState.graphing.pendingPlot) { const { indices } = appState.graphing.pendingPlot; if (type === 'histogram') plotHistogram(indices[0]); else if (type === 'boxplot') plotBoxPlot(indices[0]); else if (type === 'scatter') plotScatter(indices[0], indices[1]); else if (type === 'dotplot') plotDotPlot(indices[0]); else if (type === 'stemleaf') generateStemAndLeaf(indices[0]); } graphContextMenu!.classList.add('hidden'); appState.graphing.pendingPlot = null; } });
-        graphContextMenu!.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); });
-        graphContextMenu!.addEventListener('drop', (e: DragEvent) => { e.preventDefault(); e.stopPropagation(); const newlyDroppedIndices = JSON.parse(e.dataTransfer!.getData('application/json')); const existingIndices = appState.graphing.pendingPlot.indices; const combined = [...new Set([...existingIndices, ...newlyDroppedIndices])]; if (combined.length > 2) { showMessageModal("You can only plot up to two variables."); return; } showPlotTypeMenu(combined); });
+        spreadsheetContainer.addEventListener('dragstart', (e: DragEvent) => { if (!(e.target as HTMLElement).matches('th.col-header.in-selection')) { e.preventDefault(); return; } const { selectionStart, selectionEnd } = appState.spreadsheet; const minCol = Math.min(selectionStart!.col, selectionEnd!.col); const maxCol = Math.max(selectionEnd!.col, selectionStart!.col); let colIndices: number[] = []; for (let i = minCol; i <= maxCol; i++) { if(appState.spreadsheet.columns[i]?.name) colIndices.push(i); } if (colIndices.length === 0 || colIndices.length > 2) { showMessageModal("Drag one or two NAMED columns to plot."); e.preventDefault(); return; } e.dataTransfer!.setData('application/json', JSON.stringify(colIndices)); e.dataTransfer!.effectAllowed = 'copy'; });
+        graphingPanel.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer!.dropEffect = 'copy'; graphingPanel!.classList.add('drag-over'); });
+        graphingPanel.addEventListener('dragleave', () => { graphingPanel!.classList.remove('drag-over'); });
+        graphingPanel.addEventListener('drop', (e: DragEvent) => { e.preventDefault(); graphingPanel!.classList.remove('drag-over'); const colIndices = JSON.parse(e.dataTransfer!.getData('application/json')); showPlotTypeMenu(colIndices); });
+        graphContextMenu.addEventListener('click', (e) => { if ((e.target as HTMLElement).matches('[data-plottype]')) { const type = (e.target as HTMLElement).dataset.plottype; if (appState.graphing.pendingPlot) { const { indices } = appState.graphing.pendingPlot; if (type === 'histogram') plotHistogram(indices[0]); else if (type === 'boxplot') plotBoxPlot(indices[0]); else if (type === 'scatter') plotScatter(indices[0], indices[1]); else if (type === 'dotplot') plotDotPlot(indices[0]); else if (type === 'stemleaf') generateStemAndLeaf(indices[0]); } graphContextMenu!.classList.add('hidden'); appState.graphing.pendingPlot = null; } });
+        graphContextMenu.addEventListener('dragover', (e) => { e.preventDefault(); e.stopPropagation(); });
+        graphContextMenu.addEventListener('drop', (e: DragEvent) => { e.preventDefault(); e.stopPropagation(); const newlyDroppedIndices = JSON.parse(e.dataTransfer!.getData('application/json')); const existingIndices = appState.graphing.pendingPlot.indices; const combined = [...new Set([...existingIndices, ...newlyDroppedIndices])]; if (combined.length > 2) { showMessageModal("You can only plot up to two variables."); return; } showPlotTypeMenu(combined); });
 
         // Initial render
         appState.calculator.history.push({ 
             input: "Welcome to Wonjae's AP Stat Lab!", 
-            output: `<span class="text-base">Enter expressions, import data, or use the menu to start.</span>
-                     <div class="text-sm text-muted-foreground mt-2">&gt; To import sample data, type or paste: <code class="bg-muted px-1 py-0.5 rounded">df = pd.read_csv('lab_data_1.csv')</code></div>`
+            output: `<span class="text-sm">Enter expressions, import data, or use the menu to start.</span>
+                     <div class="text-xs text-muted-foreground mt-2">&gt; To import sample data, copy and run this command in the console below: <code class="bg-muted px-1 py-0.5 rounded">df = pd.read_csv('lab_data_1.csv')</code></div>`
         });
         renderCalculator();
         renderSpreadsheet();
@@ -529,7 +611,7 @@ export default function Home() {
     }
 
     init();
-  }, []);
+  }, [isClient]);
 
   return (
     <>
@@ -716,8 +798,9 @@ export default function Home() {
         .calc-output { text-align: right; font-weight: bold; font-size: 1.125rem; color: hsl(var(--foreground)); white-space: pre-wrap; word-break: break-all; }
         .calc-explanation {
             font-family: 'Inter', sans-serif; font-size: 0.8rem; color: hsl(var(--muted-foreground));
-            background-color: hsl(var(--accent)); padding: 0.5rem; border-radius: 0.375rem;
+            background-color: hsl(var(--accent)); padding: 0.75rem; border-radius: 0.375rem;
             margin-top: 0.5rem; white-space: pre-wrap; border-left: 3px solid hsl(var(--primary));
+            text-align: left;
         }
         #game-mode-display { font-family: 'Inter', sans-serif; padding: 0.75rem; background-color: hsla(var(--primary), 0.1); border: 1px solid hsla(var(--primary), 0.3); border-radius: 0.5rem; margin-bottom: 1rem; }
 
