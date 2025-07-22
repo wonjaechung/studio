@@ -28,11 +28,7 @@ const qaPrompt = ai.definePrompt({
 A student has asked a question in the console. The conversation history is provided.
 ---
 {{#each history}}
-{{#if (eq role 'user')}}
-Student: {{{content}}}
-{{else}}
-EXAONE: {{{content}}}
-{{/if}}
+[{{role}}]: {{{content}}}
 {{/each}}
 ---
 
