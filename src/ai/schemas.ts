@@ -27,11 +27,14 @@ export type ExplanationResponse = z.infer<typeof ExplanationResponseSchema>;
 
 
 export const QARequestSchema = z.object({
-  question: z.string().describe("The user's question about a statistical concept."),
+    history: z.array(z.object({
+        role: z.enum(['user', 'model']),
+        content: z.string(),
+    })).describe("The conversation history between the user and the AI assistant."),
 });
 export type QARequest = z.infer<typeof QARequestSchema>;
 
 export const QAResponseSchema = z.object({
-  answer: z.string().describe("A clear, concise, and helpful answer to the user's question."),
+  answer: z.string().describe("A clear, concise, and helpful answer to the user's question, based on the conversation history."),
 });
 export type QAResponse = z.infer<typeof QAResponseSchema>;

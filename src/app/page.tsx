@@ -333,7 +333,7 @@ export default function Home() {
         showTIntervalDataModal: () => renderModal({ title: 't-Interval (Data)', fields: [ { id: 'list', label: 'List', type: 'select' }, { id: 'clevel', label: 'C-Level', type:'number', value: '0.95' } ], buttons: [ { label: 'OK', action: 'runTIntervalFromData', class:'btn-primary' }, { label: 'Cancel', action: 'closeModal' } ] }),
         runTIntervalFromStats: () => { const mean = parseFloat((document.getElementById('mean') as HTMLInputElement).value); const sx = parseFloat((document.getElementById('sx') as HTMLInputElement).value); const n = parseInt((document.getElementById('n') as HTMLInputElement).value); const cLevel = parseFloat((document.getElementById('clevel') as HTMLInputElement).value); actions.runTInterval(mean, sx, n, cLevel); },
         runTIntervalFromData: () => { const listName = (document.getElementById('list') as HTMLInputElement).value; const cLevel = parseFloat((document.getElementById('clevel') as HTMLInputElement).value); const data = getColumnData(listName); if (data.length < 2) { showMessageModal("List must have >= 2 numbers."); return; } const mean = stats.mean(data); const sx = stats.stddev(data); const n = data.length; actions.runTInterval(mean, sx, n, cLevel); },
-        runTInterval(mean: number, sx: number, n: number, cLevel: number) { if ([mean,sx,n,cLevel].some(isNaN)) { showMessageModal("Invalid input."); return; } const df = n - 1; const alpha = 1 - cLevel; const tStar = Math.abs(stats.invT(alpha / 2, df)); const me = tStar * (sx / Math.sqrt(n)); const lower = mean - me; const upper = mean + me; addHistoryEntry({type: 'tInterval', input: `tInterval(${cLevel*100}%)`, output: `(${lower.toFixed(4)}, ${upper.toFixed(4)})`, data: {lower, upper, me, df, mean, sx, n}}); closeModal(); },
+        runTInterval(mean: number, sx: number, n: number, cLevel: number) { if ([mean,sx,n,cLevel].some(isNaN)) { showMessageModal("Invalid input."); return; } const df = n - 1; const alpha = (1 - cLevel) / 2; const tStar = Math.abs(stats.invT(alpha, df)); const me = tStar * (sx / Math.sqrt(n)); const lower = mean - me; const upper = mean + me; addHistoryEntry({type: 'tInterval', input: `tInterval(${cLevel*100}%)`, output: `(${lower.toFixed(4)}, ${upper.toFixed(4)})`, data: {lower, upper, me, df, mean, sx, n}}); closeModal(); },
         showTTestModalChooser: () => renderModal({ title: 't-Test', fields: [ { id: 'inputMethod', label: 'Input Method', type: 'select', options: ['Data', 'Stats'] } ], buttons: [ { label: 'OK', action: 'chooseTTestModal', class:'btn-primary' }, { label: 'Cancel', action: 'closeModal' } ], requiresData: false }),
         chooseTTestModal: () => { const method = (document.getElementById('inputMethod') as HTMLInputElement).value; if (method === 'Stats') actions.showTTestStatsModal(); else actions.showTTestDataModal(); },
         showTTestStatsModal: () => renderModal({ title: 't-Test (Stats)', fields: [ { id: 'mu0', label: 'μ₀', type:'number' }, { id: 'mean', label: 'x̄', type:'number' }, { id: 'sx', label: 'Sx', type:'number' }, { id: 'n', label: 'n', type:'number' }, { id: 'alt', label: 'Alternate Hyp', type: 'select', options: ['μ ≠ μ₀', 'μ < μ₀', 'μ > μ₀'] } ], buttons: [ { label: 'OK', action: 'runTTestFromStats', class:'btn-primary' }, { label: 'Cancel', action: 'closeModal' } ], requiresData: false }),
@@ -386,32 +386,44 @@ export default function Home() {
                 datasets[match[1]]();
                 renderSpreadsheet();
                 appState.spreadsheet.isDataLoaded = true;
-                addHistoryEntry({ input: expression, output: `Success: Sample data '${match[1]}' loaded.` });
+                addHistoryEntry({ role: 'user', content: expression });
+                addHistoryEntry({ role: 'model', content: `Success: Sample data '${match[1]}' loaded.` });
             } else {
-                addHistoryEntry({ input: expression, output: `Error: Dataset not found.` });
+                 addHistoryEntry({ role: 'user', content: expression });
+                 addHistoryEntry({ role: 'model', content: `Error: Dataset not found.` });
             }
             commandHandled = true;
         } else if (expression === 'df.head()') {
             if (appState.spreadsheet.isDataLoaded) {
                 renderDataFrameHead();
-                addHistoryEntry({ input: expression, output: "DataFrame head displayed in Viewer." });
-            } else { addHistoryEntry({ input: expression, output: "Error: name 'df' is not defined." }); }
+                 addHistoryEntry({ role: 'user', content: expression });
+                 addHistoryEntry({ role: 'model', content: "DataFrame head displayed in Viewer." });
+            } else {
+                 addHistoryEntry({ role: 'user', content: expression });
+                 addHistoryEntry({ role: 'model', content: "Error: name 'df' is not defined." });
+            }
             commandHandled = true;
         }
         if (!commandHandled) {
              try {
                 const result = (window as any).math.evaluate(expression);
-                addHistoryEntry({ input: expression, output: (window as any).math.format(result, { precision: 14 }) });
+                addHistoryEntry({ role: 'user', content: expression });
+                addHistoryEntry({ role: 'model', content: (window as any).math.format(result, { precision: 14 }) });
             } catch (err) {
                 const qaId = `qa_${Date.now()}`;
-                addHistoryEntry({ input: expression, output: "Thinking..." }, qaId);
-                answerQuestion({ question: expression })
+                addHistoryEntry({ role: 'user', content: expression });
+                addHistoryEntry({ role: 'model', content: "Thinking..." }, qaId);
+                const historyForAI = appState.calculator.history.map((entry: any) => ({
+                    role: entry.role,
+                    content: entry.input || entry.content,
+                }));
+                answerQuestion({ history: historyForAI })
                     .then(response => {
-                        addHistoryEntry({ input: expression, output: response.answer }, qaId);
+                        addHistoryEntry({ role: 'model', content: response.answer }, qaId);
                     })
                     .catch(error => {
                         console.error("Error answering question:", error);
-                        addHistoryEntry({ input: expression, output: `Error: Could not process question.` }, qaId);
+                        addHistoryEntry({ role: 'model', content: `Error: Could not process question.` }, qaId);
                     });
             }
         }
@@ -457,7 +469,7 @@ export default function Home() {
     function toggleGameMode() { appState.game.isActive = !appState.game.isActive; if (appState.game.isActive) { startGame(); } else { stopGame(); } }
     function startGame() { appState.game = { ...appState.game, isActive: true, startTime: Date.now(), questionsAnswered: 0, correctAnswers: 0, isWaitingForAI: false }; gameTimer!.classList.remove('hidden'); appState.game.timerInterval = setInterval(updateGameTimer, 1000); nextQuestion(); }
     function stopGame() { if (appState.game.timerInterval) clearInterval(appState.game.timerInterval); appState.game.isActive = false; gameDisplay!.classList.add('hidden'); gameTimer!.classList.add('hidden'); }
-    function endGame() { const { correctAnswers } = appState.game; const scoreMessage = `Game Over! You scored ${correctAnswers} out of 5.`; addHistoryEntry({ input: "Game Finished", output: scoreMessage }); stopGame(); }
+    function endGame() { const { correctAnswers } = appState.game; const scoreMessage = `Game Over! You scored ${correctAnswers} out of 5.`; addHistoryEntry({ role: 'user', content: "Game Finished" }); addHistoryEntry({ role: 'model', content: scoreMessage }); stopGame(); }
     function updateGameTimer() { const elapsed = Math.floor((Date.now() - appState.game.startTime) / 1000); const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0'); const seconds = (elapsed % 60).toString().padStart(2, '0'); gameTimer!.textContent = `${minutes}:${seconds}`; }
     function nextQuestion() {
         if (!appState.game.isActive) return;
@@ -479,8 +491,12 @@ export default function Home() {
         
         const explanationId = `explanation_${Date.now()}`;
         addHistoryEntry({ 
-            input: `Q${appState.game.questionsAnswered + 1}: ${selectedOption.text}`,
-            output: selectedOption.isCorrect ? 'Correct!' : `Correct Answer: ${correctAnswer}`,
+            role: 'user',
+            content: `Q${appState.game.questionsAnswered + 1}: ${selectedOption.text}`
+        });
+        addHistoryEntry({ 
+            role: 'model',
+            content: selectedOption.isCorrect ? 'Correct!' : `Correct Answer: ${correctAnswer}`,
             explanation: "Generating explanation with EXAONE..." 
         }, explanationId);
 
@@ -510,16 +526,16 @@ export default function Home() {
 
             // Update the specific history entry with the real explanation
             addHistoryEntry({ 
-                input: `Q${appState.game.questionsAnswered + 1}: ${selectedOption.text}`,
-                output: explanation.isCorrect ? 'Correct!' : `Correct Answer: ${correctAnswer}`,
+                role: 'model',
+                content: explanation.isCorrect ? 'Correct!' : `Correct Answer: ${correctAnswer}`,
                 explanation: explanationHTML 
             }, explanationId);
 
         }).catch(error => {
             console.error("Error generating explanation:", error);
             addHistoryEntry({ 
-                input: `Answer for Q${appState.game.questionsAnswered + 1}`,
-                output: 'Error generating explanation.' 
+                role: 'model',
+                content: 'Error generating explanation.' 
             }, explanationId);
         });
 
@@ -643,9 +659,10 @@ export default function Home() {
         graphContextMenu.addEventListener('drop', (e: DragEvent) => { e.preventDefault(); e.stopPropagation(); const newlyDroppedIndices = JSON.parse(e.dataTransfer!.getData('application/json')); const existingIndices = appState.graphing.pendingPlot.indices; const combined = [...new Set([...existingIndices, ...newlyDroppedIndices])]; if (combined.length > 2) { showMessageModal("You can only plot up to two variables."); return; } showPlotTypeMenu(combined); });
 
         // Initial render
-        appState.calculator.history.push({ 
-            input: "Welcome to Wonjae's AP Stat Lab!", 
-            output: `<span class="text-sm">Enter expressions, import data, or use the menu to start.</span>
+        addHistoryEntry({ 
+            role: 'model',
+            content: `Welcome to Wonjae's AP Stat Lab! <br>
+                     <span class="text-sm">Enter expressions, import data, or use the menu to start.</span>
                      <div class="text-xs text-muted-foreground mt-2">&gt; To import sample data, copy and run this command in the console below: <code class="bg-muted px-1 py-0.5 rounded">df = pd.read_csv('lab_data_1.csv')</code></div>`
         });
         renderCalculator();
@@ -838,7 +855,7 @@ export default function Home() {
         .calculator-display { display: flex; flex-direction: column; }
         .calc-entry { margin-bottom: 1rem; }
         .calc-input { color: hsl(var(--muted-foreground)); word-break: break-all; }
-        .calc-output { text-align: right; font-weight: bold; font-size: 1.125rem; color: hsl(var(--foreground)); white-space: pre-wrap; word-break: break-all; }
+        .calc-output { text-align: left; font-size: 1rem; color: hsl(var(--foreground)); white-space: pre-wrap; word-break: break-all; }
         .calc-explanation {
             font-family: 'Inter', sans-serif; font-size: 0.8rem; color: hsl(var(--muted-foreground));
             background-color: hsl(var(--accent)); padding: 0.75rem; border-radius: 0.375rem;
