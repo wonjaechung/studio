@@ -24,3 +24,14 @@ export const ExplanationResponseSchema = z.object({
   summary: z.string().describe("A one-sentence summary of the key takeaway or principle."),
 });
 export type ExplanationResponse = z.infer<typeof ExplanationResponseSchema>;
+
+
+export const QARequestSchema = z.object({
+  question: z.string().describe("The user's question about a statistical concept."),
+});
+export type QARequest = z.infer<typeof QARequestSchema>;
+
+export const QAResponseSchema = z.object({
+  answer: z.string().describe("A clear, concise, and helpful answer to the user's question."),
+});
+export type QAResponse = z.infer<typeof QAResponseSchema>;
