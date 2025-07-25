@@ -1,4 +1,4 @@
-# Wonjae's AP Stat Lab - v1.0
+# Coinmap - v1.0
 
 This is a web-based, all-in-one analytics dashboard designed for AP Statistics students. It combines a powerful calculator, a dynamic spreadsheet, and data visualization tools into a single, seamless interface.
 

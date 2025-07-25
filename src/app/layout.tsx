@@ -3,7 +3,7 @@ import './globals.css';
 import Script from 'next/script';
 
 export const metadata: Metadata = {
-  title: "Wonjae's AP Stat Lab",
+  title: "Coinmap",
   description: 'All-in-One Analytics Dashboard',
 };
 

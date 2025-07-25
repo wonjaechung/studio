@@ -643,7 +643,7 @@ export default function Home() {
 
         calculatorDisplay.addEventListener('dragstart', (e: DragEvent) => {
             if ((exportCalcToggle as HTMLInputElement).checked) {
-                let textHistory = "Wonjae's AP Stat Lab - Console History\n=========================================\n\n";
+                let textHistory = "Coinmap - Console History\n=========================================\n\n";
                 appState.calculator.history.slice().reverse().forEach((entry: any) => {
                     textHistory += `> ${entry.input}\n${entry.output}\n`;
                     if (entry.explanation) {
@@ -668,7 +668,7 @@ export default function Home() {
 
         // Initial render
         addHistoryEntry({ 
-            output: `Welcome to Wonjae's AP Stat Lab! <br>
+            output: `Welcome to Coinmap! <br>
                      <span class="text-sm">Enter expressions, import data, or use the menu to start.</span>
                      <div class="text-xs text-muted-foreground mt-2">&gt; To import sample data, copy and run this command in the console below: <code class="bg-muted px-1 py-0.5 rounded">df = pd.read_csv('lab_data_1.csv')</code></div>`
         });
@@ -687,7 +687,7 @@ export default function Home() {
             <div className="panel-content flex items-center">
                 <div className="flex items-center">
                     <span className="text-4xl font-bold text-primary" style={{fontFamily: "'Source Code Pro', monospace"}}>1J</span>
-                    <h1 className="text-4xl font-semibold ml-4">AP Stat Lab</h1>
+                    <h1 className="text-4xl font-semibold ml-4">Coinmap</h1>
                 </div>
             </div>
         </div>
