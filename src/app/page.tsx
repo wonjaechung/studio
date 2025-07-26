@@ -1,10 +1,24 @@
-
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { generateExplanation } from '@/ai/flows/explanation-flow';
+
 import { answerQuestion } from '@/ai/flows/qa-flow';
 import type { ExplanationRequest } from '@/ai/schemas';
+import { statsQuestions } from '../../stat/statsQuestions.js';
+
+// Debug the imported questions
+console.log('Imported statsQuestions:', statsQuestions);
+console.log('Number of questions:', statsQuestions.length);
+console.log('First question keys:', Object.keys(statsQuestions[0] || {}));
+console.log('First question has explanation:', !!statsQuestions[0]?.explanation);
+console.log('First question explanation object:', statsQuestions[0]?.explanation);
+
+// Create filter options from the imported questions
+const filterOptions = {
+    years: [...new Set(statsQuestions.map(q => q.year))].sort((a, b) => b - a),
+    tags: [...new Set(statsQuestions.flatMap(q => q.tags || []))].sort(),
+    difficulties: ['쉬움', '중간', '어려움']
+};
 
 
 export default function Home() {
@@ -36,6 +50,7 @@ export default function Home() {
     const menuBtn = document.getElementById('btn-menu');
     const clearBtn = document.getElementById('btn-clear');
     const gameModeBtn = document.getElementById('btn-game-mode');
+    const drillModeBtn = document.getElementById('btn-drill-mode');
     const gameDisplay = document.getElementById('game-mode-display');
     const gameTimer = document.getElementById('game-timer');
     const pivotToggle = document.getElementById('pivot-toggle');
@@ -58,7 +73,8 @@ export default function Home() {
       },
       calculator: { history: [] },
       graphing: { pendingPlot: null },
-      game: { isActive: false, startTime: null, timerInterval: null, question: null, questionsAnswered: 0, correctAnswers: 0, isWaitingForAI: false }
+      game: { isActive: false, startTime: null, timerInterval: null, question: null, questionsAnswered: 0, correctAnswers: 0, isWaitingForAI: false, q5Answered: false, q5SelectedAnswer: null, q5IsCorrect: null },
+      drill: { isActive: false, currentQuestionIndex: 0, questions: [], questionStatuses: [], filteredQuestions: [] }
     };
 
     // --- STATISTICAL HELPERS (Full Implementation) ---
@@ -248,7 +264,7 @@ export default function Home() {
     };
 
     // --- GAME & EXPLANATION CONTENT ---
-    const statsQuestions = [ { id: '2016-01', year: 2016, questionNumber: 1, questionText: 'The prices, in thousands of dollars, of 304 homes recently sold in a city are summarized in the histogram below. Based on the histogram, which of the following statements must be true?', answerOptions: [ { text: 'The minimum price is $250,000.', isCorrect: false }, { text: 'The maximum price is $2,500,000.', isCorrect: false }, { text: 'The median price is not greater than $750,000.', isCorrect: true }, { text: 'The mean price is between $500,000 and $750,000.', isCorrect: false }, { text: 'The upper quartile of the prices is greater than $1,500,000.', isCorrect: false }, ], topic: 'Displaying and Describing Distributions', unit: 'Unit 1: Exploring One-Variable Data' }, { id: '2016-02', year: 2016, questionNumber: 2, questionText: 'As part of a study on the relationship between the use of tanning booths and the occurrence of skin cancer, researchers reviewed the medical records of 1,436 people. The table in the console shows the data. Of the people in the study who had skin cancer, what fraction used a tanning booth?', answerOptions: [ { text: '190/265', isCorrect: false }, { text: '190/896', isCorrect: true }, { text: '190/1,436', isCorrect: false }, { text: '265/1,436', isCorrect: false }, { text: '896/1,436', isCorrect: false }, ], topic: 'Conditional Probability and Independence', unit: 'Unit 4: Probability' }, { id: '2016-03', year: 2016, questionNumber: 3, questionText: 'A researcher wants to determine whether there is convincing statistical evidence that more than 50 percent of households in a city gave a charitable donation. Let p represent the proportion of all households that gave a donation. Which of the following are appropriate hypotheses?', answerOptions: [ { text: 'H₀: p = 0.5 and Hₐ: p > 0.5', isCorrect: true }, { text: 'H₀: p = 0.5 and Hₐ: p ≠ 0.5', isCorrect: false }, { text: 'H₀: p = 0.5 and Hₐ: p < 0.5', isCorrect: false }, { text: 'H₀: p > 0.5 and Hₐ: p ≠ 0.5', isCorrect: false }, { text: 'H₀: p > 0.5 and Hₐ: p = 0.5', isCorrect: false }, ], topic: 'Significance Tests for Proportions', unit: 'Unit 6: Inference for Proportions' } ];
+    // Using imported statsQuestions from stat/statsQuestions.js
     function getExplanation(type: any, data: any) {
         switch (type) {
             case '1VarStats': return `Calculated one-variable statistics for the list '${data.listName}'.\nx̄: The sample mean.\nSx: The sample standard deviation.`;
@@ -1634,7 +1650,8 @@ export default function Home() {
         
         showClearConfirmModal: () => renderModal({ title: 'Confirm Clear', fields: [{ type: 'static', label: 'Clear all spreadsheet data?' }], buttons: [ { label: 'OK', action: 'clearSpreadsheet', class:'btn-primary' }, { label: 'Cancel', action: 'closeModal' } ], requiresData: false }),
         clearSpreadsheet: () => { appState.spreadsheet.columns = []; appState.spreadsheet.activeCell = { col: 0, row: 0 }; appState.spreadsheet.selectionStart = null; appState.spreadsheet.selectionEnd = null; appState.spreadsheet.isDataLoaded = false; renderSpreadsheet(); closeModal(); plotDefault(); },
-        closeModal
+        closeModal,
+        endGame: () => { endGame(); },
     };
     (window as any).actions = actions;
 
@@ -1862,18 +1879,147 @@ export default function Home() {
 
     // --- GAME MODE LOGIC ---
     function toggleGameMode() { appState.game.isActive = !appState.game.isActive; if (appState.game.isActive) { startGame(); } else { stopGame(); } }
-    function startGame() { appState.game = { ...appState.game, isActive: true, startTime: Date.now(), questionsAnswered: 0, correctAnswers: 0, isWaitingForAI: false }; gameTimer!.classList.remove('hidden'); appState.game.timerInterval = setInterval(updateGameTimer, 1000); nextQuestion(); }
+    function startGame() { appState.game = { ...appState.game, isActive: true, startTime: Date.now(), questionsAnswered: 0, correctAnswers: 0, isWaitingForAI: false, questionHistory: [] }; gameTimer!.classList.remove('hidden'); appState.game.timerInterval = setInterval(updateGameTimer, 1000); nextQuestion(); }
     function stopGame() { if (appState.game.timerInterval) clearInterval(appState.game.timerInterval); appState.game.isActive = false; gameDisplay!.classList.add('hidden'); gameTimer!.classList.add('hidden'); }
-    function endGame() { const { correctAnswers } = appState.game; const scoreMessage = `Game Over! You scored ${correctAnswers} out of 5.`; addHistoryEntry({ input: "Game Finished" }); addHistoryEntry({ output: scoreMessage }); stopGame(); }
+    function endGame() { 
+        const { correctAnswers } = appState.game; 
+        const scoreMessage = `Game Over! You scored ${correctAnswers} out of 5.`; 
+        
+
+        
+        // Log complete question history to console
+        console.log('\n🎮 GAME OVER - Complete Question History:');
+        console.log(`Final Score: ${correctAnswers}/5`);
+        console.log('='.repeat(50));
+        console.log('Question History Length:', appState.game.questionHistory.length);
+        appState.game.questionHistory.forEach((entry: any, index: number) => {
+            const status = entry.isCorrect ? '✅' : '❌';
+            const year = entry.year || 'Unknown';
+            const questionId = entry.questionId || `Q${entry.questionNumber}`;
+            console.log(`\nQ${entry.questionNumber}: ${status} (${year} ${questionId})`);
+            console.log(`Your Answer: ${entry.userAnswer}`);
+            console.log(`Correct Answer: ${entry.correctAnswer}`);
+            console.log('-'.repeat(30));
+        });
+        console.log('\n');
+        
+        // Add detailed summary to history
+        let summaryText = `🎮 GAME OVER - Final Score: ${correctAnswers}/5\n`;
+        summaryText += '='.repeat(50) + '\n';
+        appState.game.questionHistory.forEach((entry: any) => {
+            const status = entry.isCorrect ? '✅' : '❌';
+            const year = entry.year || 'Unknown';
+            const questionId = entry.questionId || `Q${entry.questionNumber}`;
+            summaryText += `\nQ${entry.questionNumber}: ${status} (${year} ${questionId})\n`;
+            summaryText += `Your Answer: ${entry.userAnswer}\n`;
+            summaryText += `Correct Answer: ${entry.correctAnswer}\n`;
+            summaryText += '-'.repeat(30) + '\n';
+        });
+        
+        addHistoryEntry({ output: summaryText }); 
+        stopGame(); 
+    }
     function updateGameTimer() { const elapsed = Math.floor((Date.now() - appState.game.startTime) / 1000); const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0'); const seconds = (elapsed % 60).toString().padStart(2, '0'); gameTimer!.textContent = `${minutes}:${seconds}`; }
     function nextQuestion() {
         if (!appState.game.isActive) return;
+        
+        // If Q5 was already answered, show the feedback view
+        if (appState.game.questionsAnswered === 5 && appState.game.q5Answered) {
+            const question = appState.game.question;
+            let questionHTML = `
+                <div class="bg-white/90 backdrop-blur-sm p-6 rounded-xl text-gray-800 border-2 border-gray-200 shadow-xl">
+                    <div class="mb-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="font-bold text-blue-800">Question 5 of 5</span>
+                            <span class="text-sm text-blue-700">Score: ${appState.game.correctAnswers}/5</span>
+                        </div>
+                        <div class="w-full bg-blue-200 rounded-full h-3">
+                            <div class="bg-blue-600 h-3 rounded-full transition-all duration-300" style="width: 100%"></div>
+                        </div>
+                    </div>
+                    <div class="text-lg font-medium text-gray-800 mb-6 leading-relaxed">
+                        ${convertMarkdownTableToHTML(question.questionText)}
+                    </div>
+                    <div class="text-xs text-gray-600 mb-4 bg-gray-50 p-2 rounded-lg">Unit: ${question.unit} | Topic: ${question.topic}</div>
+                    ${question.chartType ? `<div class="mb-4">${renderDrillChart(question)}</div>` : ''}
+                    <div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <p class="text-green-800 font-medium">✅ Answer submitted! Click 'End Game' to finish.</p>
+                    </div>
+                    <div class="space-y-3">`;
+                
+                // Add history button if there are previous questions
+                if (appState.game.questionHistory.length > 0) {
+                    questionHTML += `<button class="w-full p-3 mb-4 bg-blue-100 border-2 border-blue-300 rounded-xl text-blue-700 font-medium hover:bg-blue-200 transition-colors" data-action="showGameHistory">📋 View Previous Questions (${appState.game.questionHistory.length})</button>`;
+                }
+                
+                question.answerOptions.forEach((opt: any, i: any) => {
+                    const isSelected = i === appState.game.q5SelectedAnswer;
+                    const isCorrect = opt.isCorrect;
+                    let buttonClass = "w-full text-left p-4 rounded-xl border-2 transition-all duration-200 ease-in-out flex items-center text-gray-700 bg-white border-gray-300 cursor-not-allowed opacity-60";
+                    
+                    if (isSelected) {
+                        if (isCorrect) {
+                            buttonClass = "w-full text-left p-4 rounded-xl border-2 transition-all duration-200 ease-in-out flex items-center text-green-700 bg-green-50 border-green-300 cursor-not-allowed";
+                        } else {
+                            buttonClass = "w-full text-left p-4 rounded-xl border-2 transition-all duration-200 ease-in-out flex items-center text-red-700 bg-red-50 border-red-300 cursor-not-allowed";
+                        }
+                    }
+                    
+                    questionHTML += `<button class="${buttonClass}" disabled>
+                        <span class="flex items-center justify-center w-6 h-6 mr-4 font-bold text-sm border-2 border-gray-400 rounded-full flex-shrink-0 text-gray-600">
+                            ${String.fromCharCode(65 + i)}
+                        </span>
+                        <span>${opt.text}</span>
+                        ${isSelected ? (isCorrect ? ' ✅' : ' ❌') : ''}
+                    </button>`;
+                });
+                
+                questionHTML += `<button class="w-full p-3 mt-4 bg-red-100 border-2 border-red-300 rounded-xl text-red-700 font-medium hover:bg-red-200 transition-colors" data-action="endGame">⏹️ End Game</button>`;
+                questionHTML += `</div>`;
+                gameDisplay!.innerHTML = questionHTML;
+                gameDisplay!.classList.remove('hidden');
+                return;
+        }
+        
         const question = statsQuestions[Math.floor(Math.random() * statsQuestions.length)];
         appState.game.question = question;
-        let questionHTML = `<p class="font-bold mb-2">Question ${appState.game.questionsAnswered + 1} of 5:</p><p class="text-sm">${question.questionText}</p><div class="text-xs text-muted-foreground mt-1 mb-3">Unit: ${question.unit} | Topic: ${question.topic}</div><div class="grid grid-cols-1 gap-2 mt-4">`;
+        
+        // Debug: Log the question being displayed
+        console.log('Debug - Question being displayed:', question.questionText.substring(0, 100) + '...');
+        let questionHTML = `
+            <div class="bg-white/90 backdrop-blur-sm p-6 rounded-xl text-gray-800 border-2 border-gray-200 shadow-xl">
+                <div class="mb-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="font-bold text-blue-800">Question ${appState.game.questionsAnswered + 1} of 5</span>
+                        <span class="text-sm text-blue-700">Score: ${appState.game.correctAnswers}/${appState.game.questionsAnswered}</span>
+                    </div>
+                    <div class="w-full bg-blue-200 rounded-full h-3">
+                        <div class="bg-blue-600 h-3 rounded-full transition-all duration-300" style="width: ${(appState.game.questionsAnswered / 5) * 100}%"></div>
+                    </div>
+                </div>
+                <div class="text-lg font-medium text-gray-800 mb-6 leading-relaxed">
+                    ${convertMarkdownTableToHTML(question.questionText)}
+                </div>
+                <div class="text-xs text-gray-600 mb-4 bg-gray-50 p-2 rounded-lg">Unit: ${question.unit} | Topic: ${question.topic}</div>
+                ${question.chartType ? `<div class="mb-4">${renderDrillChart(question)}</div>` : ''}
+                <div class="space-y-3">`;
+        
+        // Add history button if there are previous questions
+        if (appState.game.questionHistory.length > 0) {
+            questionHTML += `<button class="w-full p-3 mb-4 bg-blue-100 border-2 border-blue-300 rounded-xl text-blue-700 font-medium hover:bg-blue-200 transition-colors" data-action="showGameHistory">📋 View Previous Questions (${appState.game.questionHistory.length})</button>`;
+        }
         question.answerOptions.forEach((opt: any, i: any) => {
-            questionHTML += `<button class="btn text-left justify-start" data-action="answerQuestion" data-index="${i}">${String.fromCharCode(65 + i)}) ${opt.text}</button>`;
+            questionHTML += `<button class="w-full text-left p-4 rounded-xl border-2 transition-all duration-200 ease-in-out flex items-center text-gray-700 bg-white border-gray-300 hover:bg-blue-50 hover:border-blue-400 cursor-pointer shadow-sm" data-action="answerQuestion" data-index="${i}">
+                <span class="flex items-center justify-center w-6 h-6 mr-4 font-bold text-sm border-2 border-gray-400 rounded-full flex-shrink-0 text-gray-600">
+                    ${String.fromCharCode(65 + i)}
+                </span>
+                <span>${opt.text}</span>
+            </button>`;
         });
+        // Only show End Game button on Q5
+        if (appState.game.questionsAnswered === 4) {
+            questionHTML += `<button class="w-full p-3 mt-4 bg-red-100 border-2 border-red-300 rounded-xl text-red-700 font-medium hover:bg-red-200 transition-colors" data-action="endGame">⏹️ End Game</button>`;
+        }
         questionHTML += `</div>`;
         gameDisplay!.innerHTML = questionHTML;
         gameDisplay!.classList.remove('hidden');
@@ -1881,69 +2027,915 @@ export default function Home() {
     
     function handleGameAnswer(answerIndex: any) {
         const { question } = appState.game;
+        
+        // Validate inputs
+        if (!question || !question.answerOptions || !Array.isArray(question.answerOptions)) {
+            console.error('Invalid question structure:', question);
+            return false;
+        }
+        
         const selectedOption = question.answerOptions[answerIndex];
-        const correctAnswer = question.answerOptions.find((opt: any) => opt.isCorrect).text;
+        if (!selectedOption) {
+            console.error('Invalid answer index:', answerIndex, 'Available options:', question.answerOptions.length);
+            return false;
+        }
+        
+        const correctOption = question.answerOptions.find((opt: any) => opt.isCorrect);
+        if (!correctOption) {
+            console.error('No correct answer found in options');
+            return false;
+        }
+        
+        const correctAnswer = correctOption.text;
+        
+        // Debug: Log the question being answered
+        console.log('Debug - Question being answered:', question.questionText.substring(0, 100) + '...');
+        console.log('Debug - Selected answer:', selectedOption.text);
+        console.log('Debug - Correct answer:', correctAnswer);
         
         const explanationId = `explanation_${Date.now()}`;
-        addHistoryEntry({ 
-            input: `Q${appState.game.questionsAnswered + 1}: ${selectedOption.text}`
-        });
-        addHistoryEntry({ 
-            output: selectedOption.isCorrect ? 'Correct!' : `Correct Answer: ${correctAnswer}`,
-            explanation: "Generating explanation with EXAONE..." 
-        }, explanationId);
-
-        // Fire off AI request but don't wait for it
-        const explanationRequest: ExplanationRequest = {
+        // Simplified feedback
+        const feedback = selectedOption.isCorrect 
+            ? `Q${appState.game.questionsAnswered + 1}: ✅ Correct!` 
+            : `Q${appState.game.questionsAnswered + 1}: ❌ Incorrect`;
+        
+        // Add to question history
+        const historyEntry = {
+            questionNumber: appState.game.questionsAnswered + 1,
             question: question.questionText,
-            options: question.answerOptions.map((o: any) => o.text),
             userAnswer: selectedOption.text,
             correctAnswer: correctAnswer,
+            isCorrect: selectedOption.isCorrect,
+            year: question.year || 'Unknown',
+            questionId: question.id || `Q${appState.game.questionsAnswered + 1}`
         };
-
-        generateExplanation(explanationRequest).then(explanation => {
-            let explanationHTML = `<div class="calc-explanation">
-                <p class="font-bold text-lg mb-2">${explanation.isCorrect ? 'Correct! ✅' : 'Not quite... 🤔'}</p>
-                <p class="font-bold text-base mb-2">${explanation.concept}</p>
-                <p class="font-semibold mt-3 mb-1">How to solve:</p>
-                <ul class="list-disc pl-5 space-y-1">
-                    ${explanation.steps.map(step => `<li>${step}</li>`).join('')}
-                </ul>
-                <p class="font-semibold mt-3 mb-1">Why other options are incorrect:</p>
-                 <ul class="list-disc pl-5 space-y-1">
-                    ${explanation.distractors.map(d => `<li>${d}</li>`).join('')}
-                </ul>
-                <p class="font-semibold mt-3 mb-1">Key Takeaway:</p>
-                <p class="italic">${explanation.summary}</p>
-            </div>`;
-
-            // Update the specific history entry with the real explanation
+        appState.game.questionHistory.push(historyEntry);
+        
             addHistoryEntry({ 
-                output: explanation.isCorrect ? 'Correct!' : `Correct Answer: ${correctAnswer}`,
-                explanation: explanationHTML 
+            output: feedback
             }, explanationId);
-
-        }).catch(error => {
-            console.error("Error generating explanation:", error);
-            addHistoryEntry({ 
-                output: 'Error generating explanation.' 
-            }, explanationId);
-        });
 
         if (selectedOption.isCorrect) {
             appState.game.correctAnswers++;
         }
 
         appState.game.questionsAnswered++;
-        if (appState.game.questionsAnswered >= 5) {
-            endGame();
-        } else {
+        
+        // If this was Q5, mark it as answered and show feedback
+        if (appState.game.questionsAnswered === 5) {
+            appState.game.q5Answered = true;
+            appState.game.q5SelectedAnswer = answerIndex;
+            appState.game.q5IsCorrect = selectedOption.isCorrect;
+            // Re-render Q5 with visual feedback
+            nextQuestion();
+        } else if (appState.game.questionsAnswered < 5) {
             nextQuestion();
         }
         return true; 
     }
 
-    actions.answerQuestion = (event: any) => { const index = event.target.dataset.index; handleGameAnswer(index); };
+    actions.answerQuestion = (event: any) => { 
+        const button = event.target.closest('[data-index]');
+        if (!button) {
+            console.error('No button with data-index found');
+            return;
+        }
+        const index = parseInt(button.dataset.index); 
+        if (isNaN(index)) {
+            console.error('Invalid answer index:', button.dataset.index);
+            return;
+        }
+        handleGameAnswer(index); 
+    };
+    actions.showGameHistory = () => { showGameHistory(); };
+    actions.backToGame = () => { nextQuestion(); };
+
+    function showGameHistory() {
+        if (!appState.game.questionHistory || appState.game.questionHistory.length === 0) return;
+        
+        let historyHTML = `
+            <div class="bg-white/90 backdrop-blur-sm p-6 rounded-xl text-gray-800 border-2 border-gray-200 max-h-96 overflow-y-auto shadow-2xl">
+                <div class="flex items-center justify-between mb-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+                            <span class="text-white font-bold text-lg">📋</span>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-800">Question History</h3>
+                    </div>
+                    <button class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors" data-action="backToGame">← Back to Game</button>
+                </div>
+                <div class="space-y-4">`;
+        
+        appState.game.questionHistory.forEach((entry: any) => {
+            const statusIcon = entry.isCorrect ? '✅' : '❌';
+            const statusClass = entry.isCorrect ? 'text-green-600' : 'text-red-600';
+            const bgClass = entry.isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200';
+            
+            historyHTML += `
+                <div class="border-2 ${bgClass} rounded-xl p-5 shadow-lg hover:shadow-xl transition-all duration-200">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-8 h-8 ${entry.isCorrect ? 'bg-green-600' : 'bg-red-600'} rounded-full flex items-center justify-center">
+                            <span class="text-white font-bold text-sm">${entry.questionNumber}</span>
+                        </div>
+                        <span class="font-bold text-lg text-gray-800">Question ${entry.questionNumber}</span>
+                        <span class="${statusClass} text-2xl">${statusIcon}</span>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-4 mb-4">
+                        <p class="text-sm text-gray-700 leading-relaxed">${entry.question}</p>
+                    </div>
+                    <div class="space-y-3">
+                        <div class="bg-white rounded-lg p-3 border border-gray-200">
+                            <div class="text-xs text-gray-500 mb-1 font-semibold">YOUR ANSWER:</div>
+                            <div class="text-sm text-gray-800 font-medium">${entry.userAnswer}</div>
+                        </div>
+                        <div class="bg-white rounded-lg p-3 border border-gray-200">
+                            <div class="text-xs text-gray-500 mb-1 font-semibold">CORRECT ANSWER:</div>
+                            <div class="text-sm text-gray-800 font-medium">${entry.correctAnswer}</div>
+                        </div>
+                    </div>
+                </div>`;
+        });
+        
+        historyHTML += `
+                </div>
+            </div>`;
+        
+        gameDisplay!.innerHTML = historyHTML;
+    }
+
+    // --- DRILL MODE FUNCTIONS ---
+    function toggleDrillMode() {
+        appState.drill.isActive = !appState.drill.isActive;
+        if (appState.drill.isActive) {
+            showDrillSetup();
+        } else {
+            stopDrill();
+        }
+    }
+
+    function showDrillSetup() {
+        const drillDisplay = document.getElementById('game-mode-display');
+        if (!drillDisplay) return;
+
+        drillDisplay.classList.remove('hidden');
+        drillDisplay.innerHTML = `
+            <div class="bg-white/90 backdrop-blur-sm p-6 rounded-xl text-gray-800 border-2 border-gray-200 shadow-xl">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+                        <span class="text-white font-bold text-lg">📊</span>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-800">AP Statistics Drill</h2>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="border-2 border-gray-200 rounded-xl overflow-hidden bg-gray-50">
+                        <div class="p-4 border-b border-gray-200 bg-blue-50">
+                            <span class="font-semibold text-blue-800">TESTS (${filterOptions.years.length})</span>
+                        </div>
+                        <div class="p-4">
+                            <div class="flex flex-wrap gap-2" id="year-filters">
+                                ${filterOptions.years.map(year => `
+                                    <button class="px-3 py-2 border-2 rounded-lg transition-colors border-gray-300 hover:bg-blue-100 hover:border-blue-400 text-gray-700 font-medium" data-year="${year}">
+                                        ${year}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-2 border-gray-200 rounded-xl overflow-hidden bg-gray-50">
+                        <div class="p-4 border-b border-gray-200 bg-green-50">
+                            <span class="font-semibold text-green-800">QUESTION TYPES</span>
+                        </div>
+                        <div class="p-4">
+                            <div class="flex flex-wrap gap-2" id="tag-filters">
+                                ${filterOptions.tags.map(tag => `
+                                    <button class="px-3 py-2 border-2 rounded-lg transition-colors border-gray-300 hover:bg-green-100 hover:border-green-400 text-gray-700 font-medium" data-tag="${tag}">
+                                        ${tag}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-2 border-gray-200 rounded-xl overflow-hidden bg-gray-50">
+                        <div class="p-4 border-b border-gray-200 bg-purple-50">
+                            <span class="font-semibold text-purple-800">DIFFICULTY</span>
+                        </div>
+                        <div class="p-4">
+                            <div class="flex flex-wrap gap-2" id="difficulty-filters">
+                                ${filterOptions.difficulties.map(diff => `
+                                    <button class="px-3 py-2 border-2 rounded-lg transition-colors border-gray-300 hover:bg-purple-100 hover:border-purple-400 text-gray-700 font-medium" data-difficulty="${diff}">
+                                        ${diff}
+                                    </button>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button id="start-drill-btn" class="w-full text-lg font-bold bg-blue-600 hover:bg-blue-700 p-4 rounded-xl flex items-center justify-center gap-3 transition-colors text-white shadow-lg">
+                        <span>🔍</span>
+                        <span>Drill ${statsQuestions.length} Questions</span>
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // Add event listeners for filters
+        setupDrillFilters();
+    }
+
+    function setupDrillFilters() {
+        const selectedYears: any[] = [];
+        const selectedTags: any[] = [];
+        const selectedDifficulties: any[] = [];
+
+        // Year filters
+        document.querySelectorAll('#year-filters button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const year = btn.getAttribute('data-year');
+                if (year) {
+                    if (selectedYears.includes(year)) {
+                        selectedYears.splice(selectedYears.indexOf(year), 1);
+                        btn.classList.remove('bg-blue-600', 'border-blue-500', 'text-white');
+                        btn.classList.add('border-gray-600', 'hover:bg-gray-700');
+                    } else {
+                        selectedYears.push(year);
+                        btn.classList.add('bg-blue-600', 'border-blue-500', 'text-white');
+                        btn.classList.remove('border-gray-600', 'hover:bg-gray-700');
+                    }
+                    updateDrillCount();
+                }
+            });
+        });
+
+        // Tag filters
+        document.querySelectorAll('#tag-filters button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tag = btn.getAttribute('data-tag');
+                if (tag) {
+                    if (selectedTags.includes(tag)) {
+                        selectedTags.splice(selectedTags.indexOf(tag), 1);
+                        btn.classList.remove('bg-blue-600', 'border-blue-500', 'text-white');
+                        btn.classList.add('border-gray-600', 'hover:bg-gray-700');
+                    } else {
+                        selectedTags.push(tag);
+                        btn.classList.add('bg-blue-600', 'border-blue-500', 'text-white');
+                        btn.classList.remove('border-gray-600', 'hover:bg-gray-700');
+                    }
+                    updateDrillCount();
+                }
+            });
+        });
+
+        // Difficulty filters
+        document.querySelectorAll('#difficulty-filters button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const difficulty = btn.getAttribute('data-difficulty');
+                if (difficulty) {
+                    if (selectedDifficulties.includes(difficulty)) {
+                        selectedDifficulties.splice(selectedDifficulties.indexOf(difficulty), 1);
+                        btn.classList.remove('bg-blue-600', 'border-blue-500', 'text-white');
+                        btn.classList.add('border-gray-600', 'hover:bg-gray-700');
+                    } else {
+                        selectedDifficulties.push(difficulty);
+                        btn.classList.add('bg-blue-600', 'border-blue-500', 'text-white');
+                        btn.classList.remove('border-gray-600', 'hover:bg-gray-700');
+                    }
+                    updateDrillCount();
+                }
+            });
+        });
+
+        // Start drill button
+        document.getElementById('start-drill-btn')?.addEventListener('click', () => {
+            console.log('Available questions:', statsQuestions.length);
+            console.log('First question:', statsQuestions[0]);
+            const filteredQuestions = statsQuestions.filter(q =>
+                (selectedYears.length === 0 || selectedYears.includes(q.year.toString())) &&
+                (selectedTags.length === 0 || (q.tags && q.tags.some(tag => selectedTags.includes(tag)))) &&
+                (selectedDifficulties.length === 0 || selectedDifficulties.includes(q.difficulty))
+            );
+            
+            console.log('Filtered questions:', filteredQuestions.length);
+            console.log('First filtered question:', filteredQuestions[0]);
+            
+            if (filteredQuestions.length > 0) {
+                startDrill(filteredQuestions);
+            }
+        });
+
+        function updateDrillCount() {
+            const filteredQuestions = statsQuestions.filter(q =>
+                (selectedYears.length === 0 || selectedYears.includes(q.year.toString())) &&
+                (selectedTags.length === 0 || (q.tags && q.tags.some(tag => selectedTags.includes(tag)))) &&
+                (selectedDifficulties.length === 0 || selectedDifficulties.includes(q.difficulty))
+            );
+            
+            const btn = document.getElementById('start-drill-btn');
+            if (btn) {
+                btn.innerHTML = `<span>🔍</span><span>Drill ${filteredQuestions.length} Questions</span>`;
+                btn.disabled = filteredQuestions.length === 0;
+                if (filteredQuestions.length === 0) {
+                    btn.classList.add('bg-gray-600', 'cursor-not-allowed');
+                    btn.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                } else {
+                    btn.classList.remove('bg-gray-600', 'cursor-not-allowed');
+                    btn.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                }
+            }
+        }
+    }
+
+    function startDrill(questions: any[]) {
+        console.log('Starting drill with questions:', questions.length);
+        console.log('First question in drill:', questions[0]);
+        console.log('First question explanation:', questions[0]?.explanation);
+        
+        appState.drill.questions = [...questions].sort(() => 0.5 - Math.random());
+        appState.drill.currentQuestionIndex = 0;
+        appState.drill.questionStatuses = questions.map(() => ({ status: 'unanswered', selected: null }));
+        
+        console.log('After shuffle - first question:', appState.drill.questions[0]);
+        console.log('After shuffle - first question explanation:', appState.drill.questions[0]?.explanation);
+        
+        showDrillQuestion();
+    }
+
+    function renderDrillChart(question: any) {
+        console.log('Rendering chart for question:', question.id);
+        console.log('Chart type:', question.chartType);
+        console.log('Chart data:', question.chartData);
+        
+        if (!question.chartType || !question.chartData) {
+            console.log('No chart data, returning empty string');
+            return '';
+        }
+        
+        switch (question.chartType) {
+            case 'Histogram':
+                console.log('Rendering histogram chart');
+                return renderHistogramChart(question.chartData);
+            case 'BoxPlot':
+                console.log('Rendering box plot chart');
+                return renderBoxPlotChart(question.chartData);
+            case 'StemPlot':
+                console.log('Rendering stem plot chart');
+                return renderStemPlotChart(question.chartData);
+            case 'ScatterPlot':
+                console.log('Rendering scatter plot chart');
+                return renderScatterPlotChart(question.chartData);
+            case 'SegmentedBarChart':
+                console.log('Rendering segmented bar chart');
+                return renderSegmentedBarChart(question.chartData);
+            default:
+                console.log('Unknown chart type:', question.chartType);
+                return '';
+        }
+    }
+
+    function renderHistogramChart(data: any) {
+        const chartId = 'chart-' + Math.random().toString(36).substr(2, 9);
+        const trace = { 
+            x: data.labels, 
+            y: data.values, 
+            type: 'bar', 
+            marker: { color: 'rgba(79, 70, 229, 0.8)' },
+            text: data.values.map((v: number) => v.toString()),
+            textposition: 'auto'
+        };
+        const layout = { 
+            title: '', 
+            xaxis: { 
+                title: data.xAxisLabel || '', 
+                color: 'white',
+                tickfont: { color: 'white' }
+            }, 
+            yaxis: { 
+                title: data.yAxisLabel || 'Frequency', 
+                color: 'white',
+                tickfont: { color: 'white' }
+            },
+            margin: { l: 50, r: 20, t: 20, b: 50 },
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            font: { color: 'white' }
+        };
+        
+        const chartHTML = `<div id="${chartId}" style="height: 300px; margin-bottom: 20px;"></div>`;
+        
+        // Use setTimeout to render the chart after the div is in the DOM
+        setTimeout(() => {
+            const chartDiv = document.getElementById(chartId);
+            if (chartDiv && (window as any).Plotly) {
+                (window as any).Plotly.newPlot(chartId, [trace], layout, {responsive: true, displayModeBar: false});
+            }
+        }, 100);
+        
+        return chartHTML;
+    }
+
+    function renderBoxPlotChart(data: any) {
+        const boxPlots = Object.entries(data).map(([key, value]: [string, any]) => ({...value, name: key}));
+        const allValues = boxPlots.flatMap((d: any) => [d.min, d.max]);
+        const minVal = Math.min(...allValues);
+        const maxVal = Math.max(...allValues);
+        const range = maxVal - minVal;
+        
+        if (range === 0) return '<div class="text-gray-400">Cannot create boxplot with zero range.</div>';
+        
+        const scale = (value: number) => ((value - minVal) / range) * 100;
+        
+        let html = '<div class="my-6 p-4 bg-gray-800 rounded-lg border border-gray-700">';
+        boxPlots.forEach((d: any, plotIndex: number) => {
+            html += `
+                <div class="mb-8">
+                    <p class="text-sm font-semibold text-gray-300 mb-2">${d.name}</p>
+                    <div class="relative h-12">
+                        <!-- Main line -->
+                        <div class="absolute top-1/2 transform -translate-y-1/2 h-px bg-gray-400" style="left: ${scale(d.min)}%; width: ${scale(d.max) - scale(d.min)}%"></div>
+                        
+                        <!-- Min whisker -->
+                        <div class="absolute top-1/2 transform -translate-y-1/2 h-6 w-px bg-gray-600 cursor-pointer hover:bg-yellow-400 transition-colors" 
+                             style="left: ${scale(d.min)}%" 
+                             title="Min: ${d.min}"
+                             onmouseover="this.style.backgroundColor='#fbbf24'; this.nextElementSibling.style.display='block'"
+                             onmouseout="this.style.backgroundColor='#4b5563'; this.nextElementSibling.style.display='none'">
+                        </div>
+                        <div class="absolute top-1/2 transform -translate-y-1/2 bg-yellow-400 text-black text-xs px-2 py-1 rounded pointer-events-none" 
+                             style="left: ${scale(d.min)}%; top: -30px; display: none; white-space: nowrap;">
+                            Min: ${d.min}
+                        </div>
+                        
+                        <!-- Max whisker -->
+                        <div class="absolute top-1/2 transform -translate-y-1/2 h-6 w-px bg-gray-600 cursor-pointer hover:bg-yellow-400 transition-colors" 
+                             style="left: ${scale(d.max)}%" 
+                             title="Max: ${d.max}"
+                             onmouseover="this.style.backgroundColor='#fbbf24'; this.nextElementSibling.style.display='block'"
+                             onmouseout="this.style.backgroundColor='#4b5563'; this.nextElementSibling.style.display='none'">
+                        </div>
+                        <div class="absolute top-1/2 transform -translate-y-1/2 bg-yellow-400 text-black text-xs px-2 py-1 rounded pointer-events-none" 
+                             style="left: ${scale(d.max)}%; top: -30px; display: none; white-space: nowrap;">
+                            Max: ${d.max}
+                        </div>
+                        
+                        <!-- Box (Q1 to Q3) -->
+                        <div class="absolute top-1/2 transform -translate-y-1/2 h-10 bg-blue-200 border-2 border-blue-400 cursor-pointer hover:bg-blue-300 transition-colors" 
+                             style="left: ${scale(d.q1)}%; width: ${scale(d.q3) - scale(d.q1)}%" 
+                             title="Q1: ${d.q1}, Q3: ${d.q3}"
+                             onmouseover="this.style.backgroundColor='#93c5fd'; this.nextElementSibling.style.display='block'"
+                             onmouseout="this.style.backgroundColor='#bfdbfe'; this.nextElementSibling.style.display='none'">
+                        </div>
+                        <div class="absolute top-1/2 transform -translate-y-1/2 bg-blue-400 text-white text-xs px-2 py-1 rounded pointer-events-none" 
+                             style="left: ${(scale(d.q1) + scale(d.q3)) / 2}%; top: -30px; display: none; white-space: nowrap;">
+                            Q1: ${d.q1}, Q3: ${d.q3}
+                        </div>
+                        
+                        <!-- Median line -->
+                        <div class="absolute top-1/2 transform -translate-y-1/2 h-10 w-px bg-blue-600 cursor-pointer hover:bg-red-400 transition-colors" 
+                             style="left: ${scale(d.median)}%" 
+                             title="Median: ${d.median}"
+                             onmouseover="this.style.backgroundColor='#f87171'; this.nextElementSibling.style.display='block'"
+                             onmouseout="this.style.backgroundColor='#2563eb'; this.nextElementSibling.style.display='none'">
+                        </div>
+                        <div class="absolute top-1/2 transform -translate-y-1/2 bg-red-400 text-white text-xs px-2 py-1 rounded pointer-events-none" 
+                             style="left: ${scale(d.median)}%; top: -30px; display: none; white-space: nowrap;">
+                            Median: ${d.median}
+                        </div>
+                    </div>
+                    
+                                         <!-- Simple X-axis -->
+                     <div class="relative mt-4 h-6">
+                         <div class="absolute bottom-0 left-0 right-0 h-px bg-gray-500"></div>
+                         <div class="absolute bottom-0 left-0 right-0 flex justify-between text-xs text-gray-400">
+                             <span>${Math.round(minVal)}</span>
+                             <span>${Math.round(maxVal)}</span>
+                         </div>
+                     </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        return html;
+    }
+
+    function renderStemPlotChart(data: any) {
+        const allStems = [...Object.keys(data.female), ...Object.keys(data.male)].map(Number);
+        const stems = Array.from(new Set(allStems)).sort((a, b) => a - b);
+        
+        let html = '<div class="my-6 p-4 bg-gray-800 rounded-lg border border-gray-700 font-mono text-sm">';
+        html += '<div class="grid grid-cols-3 text-center gap-4">';
+        html += '<div class="font-bold text-gray-300 border-b border-gray-600 pb-1">Female</div>';
+        html += '<div></div>';
+        html += '<div class="font-bold text-gray-300 border-b border-gray-600 pb-1">Male</div>';
+        
+        stems.forEach(stem => {
+            const femaleLeaves = (data.female[stem] || '').split('').reverse().join(' ');
+            const maleLeaves = (data.male[stem] || '').split('').join(' ');
+            html += `
+                <div class="text-right py-1">${femaleLeaves}</div>
+                <div class="text-center font-bold text-gray-400 border-l border-r border-gray-600 py-1">${stem}</div>
+                <div class="text-left py-1">${maleLeaves}</div>
+            `;
+        });
+        
+        html += '</div>';
+        html += `<div class="text-center mt-4 text-xs text-gray-400 font-semibold">${data.key}</div>`;
+        html += '</div>';
+        return html;
+    }
+
+    function renderScatterPlotChart(data: any) {
+        const chartId = 'chart-' + Math.random().toString(36).substr(2, 9);
+        const trace = { 
+            x: data.points.map((p: any) => p.x), 
+            y: data.points.map((p: any) => p.y), 
+            type: 'scatter', 
+            mode: 'markers',
+            marker: { color: 'rgba(79, 70, 229, 0.8)', size: 8 }
+        };
+        const layout = { 
+            title: '', 
+            xaxis: { 
+                title: data.xAxisLabel || '', 
+                color: 'white',
+                tickfont: { color: 'white' }
+            }, 
+            yaxis: { 
+                title: data.yAxisLabel || '', 
+                color: 'white',
+                tickfont: { color: 'white' }
+            },
+            margin: { l: 50, r: 20, t: 20, b: 50 },
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            font: { color: 'white' }
+        };
+        
+        const chartHTML = `<div id="${chartId}" style="height: 300px; margin-bottom: 20px;"></div>`;
+        
+        // Use setTimeout to render the chart after the div is in the DOM
+        setTimeout(() => {
+            const chartDiv = document.getElementById(chartId);
+            if (chartDiv && (window as any).Plotly) {
+                (window as any).Plotly.newPlot(chartId, [trace], layout, {responsive: true, displayModeBar: false});
+            }
+        }, 100);
+        
+        return chartHTML;
+    }
+
+    function renderSegmentedBarChart(data: any) {
+        const categories = data.map((item: any) => item.name);
+        const activities = Object.keys(data[0]).filter(key => key !== 'name');
+        
+        let html = '<div class="my-6 p-4 bg-gray-800 rounded-lg border border-gray-700">';
+        html += '<div class="space-y-4">';
+        
+        data.forEach((item: any) => {
+            const total = activities.reduce((sum, activity) => sum + (item[activity] || 0), 0);
+            html += `
+                <div>
+                    <div class="flex justify-between text-sm text-gray-300 mb-1">
+                        <span>${item.name}</span>
+                        <span>Total: ${total}</span>
+                    </div>
+                    <div class="flex h-8 bg-gray-700 rounded overflow-hidden relative">
+            `;
+            
+            let currentPosition = 0;
+            activities.forEach((activity, index) => {
+                const value = item[activity] || 0;
+                const percentage = total > 0 ? (value / total) * 100 : 0;
+                const colors = ['bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-red-500', 'bg-purple-500'];
+                
+                html += `<div class="${colors[index % colors.length]} relative" style="width: ${percentage}%">`;
+                if (value > 0) {
+                    html += `<span class="absolute inset-0 flex items-center justify-center text-xs font-bold text-white" style="left: ${currentPosition}%; width: ${percentage}%">${value}</span>`;
+                }
+                html += '</div>';
+                
+                currentPosition += percentage;
+            });
+            
+            html += '</div></div>';
+        });
+        
+        // Add legend
+        html += '<div class="mt-4 flex flex-wrap gap-4 text-xs">';
+        activities.forEach((activity, index) => {
+            const colors = ['bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-red-500', 'bg-purple-500'];
+            html += `<div class="flex items-center gap-2">
+                <div class="w-3 h-3 ${colors[index % colors.length]} rounded"></div>
+                <span class="text-gray-300">${activity}</span>
+            </div>`;
+        });
+        html += '</div>';
+        
+        html += '</div></div>';
+        return html;
+    }
+
+    function convertMarkdownTableToHTML(text: string) {
+        // Simple and reliable markdown table parser
+        const lines = text.split('\n');
+        const tables = [];
+        let currentTable = [];
+        let inTable = false;
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            
+            // Check if this line starts a table
+            if (line.trim().startsWith('|') && !inTable) {
+                inTable = true;
+                currentTable = [line];
+            }
+            // Continue collecting table lines
+            else if (line.trim().startsWith('|') && inTable) {
+                currentTable.push(line);
+            }
+            // End of table
+            else if (!line.trim().startsWith('|') && inTable) {
+                if (currentTable.length >= 3) {
+                    tables.push([...currentTable]);
+                }
+                inTable = false;
+                currentTable = [];
+            }
+        }
+        
+        // Handle table at end of text
+        if (inTable && currentTable.length >= 3) {
+            tables.push(currentTable);
+        }
+        
+        let result = text;
+        
+        // Replace each table with HTML
+        tables.forEach(tableLines => {
+            const tableText = tableLines.join('\n');
+            const html = convertTableToHTML(tableLines);
+            result = result.replace(tableText, html);
+        });
+        
+        return result;
+    }
+    
+    function convertTableToHTML(tableLines: string[]) {
+        // Parse headers (first line)
+        const headerLine = tableLines[0];
+        const headers = headerLine.split('|').map(h => h.trim()).filter(h => h);
+        
+        // Skip separator line (second line)
+        const dataLines = tableLines.slice(2);
+        
+        let html = '<div class="my-4 overflow-x-auto"><table class="min-w-full border border-gray-600 bg-gray-800 rounded-lg">';
+        
+        // Header row
+        html += '<thead><tr class="bg-gray-700">';
+        headers.forEach(header => {
+            html += `<th class="px-4 py-2 text-left text-sm font-semibold text-gray-200 border-b border-gray-600">${header}</th>`;
+        });
+        html += '</tr></thead>';
+        
+        // Data rows
+        html += '<tbody>';
+        dataLines.forEach(row => {
+            const cells = row.split('|').map(cell => cell.trim()).filter(cell => cell);
+            html += '<tr class="border-b border-gray-600">';
+            cells.forEach(cell => {
+                html += `<td class="px-4 py-2 text-sm text-gray-300">${cell}</td>`;
+            });
+            html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+        
+        return html;
+    }
+
+    function showDrillQuestion() {
+        const drillDisplay = document.getElementById('game-mode-display');
+        if (!drillDisplay || appState.drill.currentQuestionIndex >= appState.drill.questions.length) {
+            endDrill();
+            return;
+        }
+
+        const currentQuestion = appState.drill.questions[appState.drill.currentQuestionIndex];
+        const currentStatus = appState.drill.questionStatuses[appState.drill.currentQuestionIndex];
+
+        let questionHTML = `
+            <div class="bg-white/90 backdrop-blur-sm p-6 rounded-xl text-gray-800 border-2 border-gray-200 shadow-xl">
+                <div class="flex justify-between items-center mb-4">
+                    <span class="text-xs font-semibold inline-block py-2 px-3 uppercase rounded-full text-blue-700 bg-blue-100 border border-blue-200">
+                        ${currentQuestion.year} / Q${currentQuestion.questionNumber} / ${currentQuestion.difficulty}
+                    </span>
+                    <button onclick="window.stopDrill()" class="text-sm text-gray-600 hover:text-gray-800 hover:underline">Drill 종료</button>
+                </div>
+                <div class="text-lg font-medium text-gray-800 mb-6 leading-relaxed">
+                    ${convertMarkdownTableToHTML(currentQuestion.questionText)}
+                </div>
+        `;
+        
+        // Add chart if present
+        if (currentQuestion.chartType && currentQuestion.chartData) {
+            console.log('Adding chart to question HTML');
+            const chartHTML = renderDrillChart(currentQuestion);
+            console.log('Chart HTML:', chartHTML);
+            questionHTML += `<div class="drill-chart">${chartHTML}</div>`;
+        } else {
+            console.log('No chart data for question:', currentQuestion.id);
+        }
+        
+        questionHTML += `
+                <div class="space-y-3" id="drill-options">
+                    ${currentQuestion.answerOptions.map((option: any, index: number) => `
+                        <button class="w-full text-left p-4 rounded-xl border-2 transition-all duration-200 ease-in-out flex items-center text-gray-700 bg-white border-gray-300 hover:bg-blue-50 hover:border-blue-400 cursor-pointer shadow-sm" data-option="${index}">
+                            <span class="flex items-center justify-center w-6 h-6 mr-4 font-bold text-sm border-2 border-gray-400 rounded-full flex-shrink-0 text-gray-600">
+                                ${String.fromCharCode(65 + index)}
+                            </span>
+                            <span>${option.text}</span>
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        drillDisplay.innerHTML = questionHTML;
+
+        // Add event listeners for answer options
+        document.querySelectorAll('#drill-options button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const optionIndex = parseInt(btn.getAttribute('data-option') || '0');
+                handleDrillAnswer(optionIndex);
+            });
+        });
+    }
+
+    function handleDrillAnswer(selectedIndex: number) {
+        const currentQuestion = appState.drill.questions[appState.drill.currentQuestionIndex];
+        const currentStatus = appState.drill.questionStatuses[appState.drill.currentQuestionIndex];
+        
+        if (!currentQuestion || !currentStatus) {
+            console.error('Current question or status is undefined');
+            return;
+        }
+        
+        if (currentStatus.status !== 'unanswered') return;
+        
+        const isCorrect = currentQuestion.answerOptions[selectedIndex].isCorrect;
+        
+        const newStatuses = [...appState.drill.questionStatuses];
+        newStatuses[appState.drill.currentQuestionIndex] = {
+            status: isCorrect ? 'correct' : 'incorrect',
+            selected: selectedIndex
+        };
+        appState.drill.questionStatuses = newStatuses;
+        
+        console.log('Current question:', currentQuestion);
+        console.log('Question explanation:', currentQuestion.explanation);
+        console.log('Has explanation:', !!currentQuestion.explanation);
+        console.log('Explanation keys:', currentQuestion.explanation ? Object.keys(currentQuestion.explanation) : 'No explanation');
+        console.log('KO explanation:', currentQuestion.explanation?.ko);
+        
+        showDrillFeedback();
+    }
+
+    function showDrillFeedback() {
+        const drillDisplay = document.getElementById('game-mode-display');
+        if (!drillDisplay) return;
+
+        const currentQuestion = appState.drill.questions[appState.drill.currentQuestionIndex];
+        const currentStatus = appState.drill.questionStatuses[appState.drill.currentQuestionIndex];
+        
+        if (!currentQuestion || !currentStatus) {
+            console.error('Current question or status is undefined');
+            return;
+        }
+        
+        const showFeedback = currentStatus.status !== 'unanswered';
+
+        let feedbackHTML = `
+            <div class="bg-white/90 backdrop-blur-sm p-6 rounded-xl text-gray-800 border-2 border-gray-200 shadow-xl">
+                <div class="flex justify-between items-center mb-4">
+                    <span class="text-xs font-semibold inline-block py-2 px-3 uppercase rounded-full text-blue-700 bg-blue-100 border border-blue-200">
+                        ${currentQuestion.year} / Q${currentQuestion.questionNumber} / ${currentQuestion.difficulty}
+                    </span>
+                    <button onclick="window.stopDrill()" class="text-sm text-gray-600 hover:text-gray-800 hover:underline">Drill 종료</button>
+                </div>
+                <div class="text-lg font-medium text-gray-800 mb-6 leading-relaxed">
+                    ${convertMarkdownTableToHTML(currentQuestion.questionText)}
+                </div>
+        `;
+        
+        // Add chart if present
+        if (currentQuestion.chartType && currentQuestion.chartData) {
+            feedbackHTML += `<div class="drill-chart">${renderDrillChart(currentQuestion)}</div>`;
+        }
+        
+        feedbackHTML += `
+                <div class="space-y-3" id="drill-options">
+                    ${currentQuestion.answerOptions.map((option: any, index: number) => {
+                        let buttonClass = "w-full text-left p-4 rounded-xl border-2 transition-all duration-200 ease-in-out flex items-center";
+                        if (showFeedback) {
+                            if (option.isCorrect) {
+                                buttonClass += " bg-green-100 border-green-500 text-green-800 font-bold";
+                            } else if (currentStatus.selected === index) {
+                                buttonClass += " bg-red-100 border-red-500 text-red-800";
+                            } else {
+                                buttonClass += " bg-gray-100 border-gray-300 text-gray-600 cursor-not-allowed opacity-60";
+                            }
+                        } else {
+                            buttonClass += " bg-white border-gray-300 text-gray-700 hover:bg-blue-50 hover:border-blue-400 cursor-pointer";
+                        }
+                        
+                        return `
+                            <button class="${buttonClass}" data-option="${index}">
+                                <span class="flex items-center justify-center w-6 h-6 mr-4 font-bold text-sm border-2 border-gray-400 rounded-full flex-shrink-0">
+                                    ${String.fromCharCode(65 + index)}
+                                </span>
+                                <span>${option.text}</span>
+                            </button>
+                        `;
+                    }).join('')}
+                </div>
+                ${showFeedback ? `
+                    <div class="mt-6">
+                        <div class="p-4 rounded-xl bg-blue-50 border-2 border-blue-200">
+                            ${currentQuestion.explanation && currentQuestion.explanation.ko ? `
+                                <div class="mb-3">
+                                    <strong class="text-blue-800 text-lg">${currentQuestion.explanation.ko.concept || '설명'}</strong>
+                                </div>
+                                <div class="text-sm text-gray-700 mb-4">
+                                    <strong class="text-blue-700">단계:</strong>
+                                    <ol class="list-decimal list-inside mt-2 space-y-2">
+                                        ${(currentQuestion.explanation.ko.steps || []).map((step: string) => `<li class="text-gray-700">${step}</li>`).join('')}
+                                    </ol>
+                                </div>
+                                <div class="text-sm text-gray-700">
+                                    <strong class="text-blue-700">오답 분석:</strong>
+                                    <ul class="list-disc list-inside mt-2 space-y-2">
+                                        ${(currentQuestion.explanation.ko.distractors || []).map((distractor: string) => `<li class="text-gray-700">${distractor}</li>`).join('')}
+                                    </ul>
+                                </div>
+                            ` : `
+                                <div class="text-sm text-gray-700">
+                                    <strong class="text-blue-700">설명:</strong> 이 문제에 대한 자세한 설명이 준비 중입니다.
+                                </div>
+                            `}
+                        </div>
+                        <button onclick="window.nextDrillQuestion()" class="w-full mt-4 bg-blue-600 text-white font-bold py-3 px-4 rounded-xl hover:bg-blue-700 shadow-lg">
+                            ${appState.drill.currentQuestionIndex === appState.drill.questions.length - 1 ? "결과 보기" : "다음 문제"}
+                        </button>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+        
+        drillDisplay.innerHTML = feedbackHTML;
+    }
+
+    function nextDrillQuestion() {
+        appState.drill.currentQuestionIndex++;
+        if (appState.drill.currentQuestionIndex >= appState.drill.questions.length) {
+            endDrill();
+        } else {
+            showDrillQuestion();
+        }
+    }
+
+    function endDrill() {
+        const correctAnswers = appState.drill.questionStatuses.filter((status: any) => status.status === 'correct').length;
+        const totalQuestions = appState.drill.questions.length;
+        
+        const drillDisplay = document.getElementById('game-mode-display');
+        if (drillDisplay) {
+            drillDisplay.innerHTML = `
+                <div class="bg-gray-800/50 backdrop-blur-sm p-6 rounded-lg text-white border border-gray-700/50">
+                    <div class="text-center">
+                        <h2 class="text-2xl font-bold mb-4">Drill 완료!</h2>
+                        <div class="text-4xl font-bold text-blue-400 mb-2">${correctAnswers}/${totalQuestions}</div>
+                        <div class="text-lg text-gray-300 mb-6">정답률: ${Math.round((correctAnswers / totalQuestions) * 100)}%</div>
+                        <button onclick="window.stopDrill()" class="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700">
+                            새로운 Drill 시작
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    function stopDrill() {
+        appState.drill.isActive = false;
+        const drillDisplay = document.getElementById('game-mode-display');
+        if (drillDisplay) {
+            drillDisplay.classList.add('hidden');
+        }
+    }
+
+    // Make drill functions globally accessible
+    (window as any).stopDrill = stopDrill;
+    (window as any).nextDrillQuestion = nextDrillQuestion;
 
     // --- OTHER UTILS ---
     function renderDataFrameHead() { let tableHTML = '<div class="dataframe-table"><thead><tr>'; appState.spreadsheet.columns.forEach((col: any) => { if(col.name && !col.name.match(/^[A-Z]$/)) tableHTML += `<th>${col.name}</th>`; }); tableHTML += '</tr></thead><tbody>'; for (let i = 0; i < 5; i++) { tableHTML += '<tr>'; appState.spreadsheet.columns.forEach((col: any) => { if(col.name && !col.name.match(/^[A-Z]$/)) tableHTML += `<td>${col.data[i] || ''}</td>`; }); tableHTML += '</tr>'; } tableHTML += '</tbody></table>'; graphPlotDiv!.innerHTML = tableHTML; }
@@ -1963,7 +2955,7 @@ export default function Home() {
 
     // --- INITIALIZATION ---
     function init() {
-      if (!menuBtn || !clearBtn || !spreadsheetContainer || !calculatorInput || !calculatorEnterBtn || !gameModeBtn || !exportCalcToggle || !exportGraphToggle || !graphPlotDiv || !graphingPanel || !graphContextMenu || !calculatorDisplay) {
+      if (!menuBtn || !clearBtn || !spreadsheetContainer || !calculatorInput || !calculatorEnterBtn || !gameModeBtn || !drillModeBtn || !exportCalcToggle || !exportGraphToggle || !graphPlotDiv || !graphingPanel || !graphContextMenu || !calculatorDisplay) {
         return;
       }
         // Event Listeners
@@ -1989,6 +2981,7 @@ export default function Home() {
         calculatorInput.addEventListener('keydown', (e) => { if(e.key === 'Enter') handleCalculatorInput(); });
         calculatorEnterBtn.addEventListener('click', handleCalculatorInput);
         gameModeBtn.addEventListener('click', toggleGameMode);
+        drillModeBtn.addEventListener('click', toggleDrillMode);
 
         exportCalcToggle.addEventListener('change', (e) => {
             const isChecked = (e.target as HTMLInputElement).checked;
@@ -2089,6 +3082,7 @@ export default function Home() {
                     </div>
                     <button id="btn-menu" className="btn">Stats Menu</button>
                     <button id="btn-game-mode" className="btn">Game Mode</button>
+                    <button id="btn-drill-mode" className="btn">Drill Mode</button>
                 </div>
             </div>
             <div id="calculator-content" className="panel-content">
