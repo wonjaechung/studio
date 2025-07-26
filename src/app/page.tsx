@@ -63,7 +63,126 @@ export default function Home() {
 
     // --- STATISTICAL HELPERS (Full Implementation) ---
     function invNormForT(p: number) { if (p <= 0 || p >= 1) return NaN; const a = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02, 1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00]; const b = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02, 6.680131188771972e+01, -1.328068155288572e+01]; const c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00, -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00]; const d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00, 3.754408661907416e+00]; const p_low = 0.02425; const p_high = 1 - p_low; let q, x; if (p < p_low) { q = Math.sqrt(-2 * Math.log(p)); x = (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1); } else if (p <= p_high) { q = p - 0.5; let r = q * q; x = (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1); } else { q = Math.sqrt(-2 * Math.log(1 - p)); x = -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1); } return x; }
-    const stats: any = { sum: (arr: any[]) => arr.reduce((acc, val) => acc + parseFloat(val), 0), mean: (arr: any[]) => stats.sum(arr) / arr.length, stddev: (arr: any[], isPopulation = false) => { if (arr.length < 2) return 0; const meanVal = stats.mean(arr); const sqDiffs = arr.map((val: any) => Math.pow(parseFloat(val) - meanVal, 2)); const variance = stats.sum(sqDiffs) / (arr.length - (isPopulation ? 0 : 1)); return Math.sqrt(variance); }, median: (arr: any[]) => { const sorted = [...arr].sort((a, b) => parseFloat(a) - parseFloat(b)); const mid = Math.floor(sorted.length / 2); return sorted.length % 2 !== 0 ? parseFloat(sorted[mid]) : (parseFloat(sorted[mid - 1]) + parseFloat(sorted[mid])) / 2; }, quartile: (arr: any[], q: any) => { const sorted = [...arr].sort((a, b) => parseFloat(a) - parseFloat(b)); const pos = (sorted.length - 1) * q; const base = Math.floor(pos); const rest = pos - base; if (sorted[base + 1] !== undefined) return parseFloat(sorted[base]) + rest * (parseFloat(sorted[base + 1]) - parseFloat(sorted[base])); return parseFloat(sorted[base]); }, combinations: (n: number, k: number) => { if (k < 0 || k > n) return 0; if (k === 0 || k === n) return 1; if (k > n / 2) k = n - k; let res = 1; for (let i = 1; i <= k; i++) { res = res * (n - i + 1) / i; } return Math.round(res); }, binomialPdf: (n: number, p: number, k: number) => stats.combinations(n, k) * Math.pow(p, k) * Math.pow(1 - p, n - k), normalCdf: (lower: number, upper: number, mean: number, std: number) => ((window as any).math.erf((upper - mean) / (std * Math.sqrt(2))) - (window as any).math.erf((lower - mean) / (std * Math.sqrt(2)))) / 2, invNorm: (p: number, mean: number, std: number) => mean + std * invNormForT(p), invT: (p: number, df: number) => { const z = invNormForT(p); if (isNaN(z)) return NaN; const z2 = z * z; const g1 = (z2 * z + z) / 4; const g2 = (5 * z2 * z2 * z + 16 * z2 * z + 3 * z) / 96; const g3 = (3 * z2 * z2 * z2 * z + 19 * z2 * z2 * z + 17 * z2 * z - 15 * z) / 384; return z + (g1 / df) + (g2 / (df * df)) + (g3 / (df * df * df)); }, tCdf: (t: number, df: number) => { let x = df / (t*t + df); function incompleteBeta(x: number, a: number, b: number) { if (x <= 0) return 0; if (x >= 1) return 1; const bt = (window as any).math.exp((window as any).math.gammaln(a + b) - (window as any).math.gammaln(a) - (window as any).math.gammaln(b) + a * Math.log(x) + b * Math.log(1 - x)); if (x < (a + 1) / (a + b + 2)) { return bt * continuedFraction(x, a, b) / a; } else { return 1 - bt * continuedFraction(1 - x, b, a) / b; } } function continuedFraction(x: number, a: number, b: number) { const maxIterations = 100; const epsilon = 1e-15; let am = 1, bm = 1, az = 1, qab = a + b, qap = a + 1, qam = a - 1, bz = 1 - qab * x / qap; for (let i = 1; i <= maxIterations; i++) { let d = i * (b - i) * x / ((qam + 2 * i) * (a + 2 * i)); let ap = az + d * am; let bp = bz + d * bm; d = -(a + i) * (qab + i) * x / ((a + 2 * i) * (qap + 2 * i)); let app = ap + d * az; let bpp = bp + d * bz; am = ap / bpp; bm = bp / bpp; az = app / bpp; bz = 1; if (Math.abs(az - am) < (epsilon * Math.abs(az))) return az; } return az; } let p = incompleteBeta(x, df / 2, 0.5); return t > 0 ? 1 - 0.5 * p : 0.5 * p; } };
+    const stats: any = { 
+        sum: (arr: any[]) => arr.reduce((acc, val) => acc + parseFloat(val), 0), 
+        mean: (arr: any[]) => stats.sum(arr) / arr.length, 
+        stddev: (arr: any[], isPopulation = false) => { 
+            if (arr.length < 2) return 0; 
+            const meanVal = stats.mean(arr); 
+            const sqDiffs = arr.map((val: any) => Math.pow(parseFloat(val) - meanVal, 2)); 
+            const variance = stats.sum(sqDiffs) / (arr.length - (isPopulation ? 0 : 1)); 
+            return Math.sqrt(variance); 
+        }, 
+        median: (arr: any[]) => { 
+            const sorted = [...arr].sort((a, b) => parseFloat(a) - parseFloat(b)); 
+            const mid = Math.floor(sorted.length / 2); 
+            return sorted.length % 2 !== 0 ? parseFloat(sorted[mid]) : (parseFloat(sorted[mid - 1]) + parseFloat(sorted[mid])) / 2; 
+        }, 
+        quartile: (arr: any[], q: any) => { 
+            const sorted = [...arr].sort((a, b) => parseFloat(a) - parseFloat(b)); 
+            const pos = (sorted.length - 1) * q; 
+            const base = Math.floor(pos); 
+            const rest = pos - base; 
+            if (sorted[base + 1] !== undefined) return parseFloat(sorted[base]) + rest * (parseFloat(sorted[base + 1]) - parseFloat(sorted[base])); 
+            return parseFloat(sorted[base]); 
+        }, 
+        combinations: (n: number, k: number) => { 
+            if (k < 0 || k > n) return 0; 
+            if (k === 0 || k === n) return 1; 
+            if (k > n / 2) k = n - k; 
+            let res = 1; 
+            for (let i = 1; i <= k; i++) { 
+                res = res * (n - i + 1) / i; 
+            } 
+            return Math.round(res); 
+        }, 
+        binomialPdf: (n: number, p: number, k: number) => stats.combinations(n, k) * Math.pow(p, k) * Math.pow(1 - p, n - k), 
+        normalCdf: (lower: number, upper: number, mean: number, std: number) => ((window as any).math.erf((upper - mean) / (std * Math.sqrt(2))) - (window as any).math.erf((lower - mean) / (std * Math.sqrt(2)))) / 2, 
+        invNorm: (p: number, mean: number, std: number) => mean + std * invNormForT(p), 
+        invT: (p: number, df: number) => { 
+            const z = invNormForT(p); 
+            if (isNaN(z)) return NaN; 
+            const z2 = z * z; 
+            const g1 = (z2 * z + z) / 4; 
+            const g2 = (5 * z2 * z2 * z + 16 * z2 * z + 3 * z) / 96; 
+            const g3 = (3 * z2 * z2 * z2 * z + 19 * z2 * z2 * z + 17 * z2 * z - 15 * z) / 384; 
+            return z + (g1 / df) + (g2 / (df * df)) + (g3 / (df * df * df)); 
+        }, 
+        tCdf: (t: number, df: number) => { 
+            let x = df / (t*t + df); 
+            function incompleteBeta(x: number, a: number, b: number) { 
+                if (x <= 0) return 0; 
+                if (x >= 1) return 1; 
+                const bt = (window as any).math.exp((window as any).math.gammaln(a + b) - (window as any).math.gammaln(a) - (window as any).math.gammaln(b) + a * Math.log(x) + b * Math.log(1 - x)); 
+                if (x < (a + 1) / (a + b + 2)) { 
+                    return bt * continuedFraction(x, a, b) / a; 
+                } else { 
+                    return 1 - bt * continuedFraction(1 - x, b, a) / b; 
+                } 
+            } 
+            function continuedFraction(x: number, a: number, b: number) { 
+                const maxIterations = 100; 
+                const epsilon = 1e-15; 
+                let am = 1, bm = 1, az = 1, qab = a + b, qap = a + 1, qam = a - 1, bz = 1 - qab * x / qap; 
+                for (let i = 1; i <= maxIterations; i++) { 
+                    let d = i * (b - i) * x / ((qam + 2 * i) * (a + 2 * i)); 
+                    let ap = az + d * am; 
+                    let bp = bz + d * bm; 
+                    d = -(a + i) * (qab + i) * x / ((a + 2 * i) * (qap + 2 * i)); 
+                    let app = ap + d * az; 
+                    let bpp = bp + d * bz; 
+                    am = ap / bpp; 
+                    bm = bp / bpp; 
+                    az = app / bpp; 
+                    bz = 1; 
+                    if (Math.abs(az - am) < (epsilon * Math.abs(az))) return az; 
+                } 
+                return az; 
+            } 
+            let p = incompleteBeta(x, df / 2, 0.5); 
+            return t > 0 ? 1 - 0.5 * p : 0.5 * p; 
+        },
+        // New functions
+        tcdf: (lower: number, upper: number, df: number) => {
+            if (lower === -Infinity) return stats.tCdf(upper, df);
+            if (upper === Infinity) return 1 - stats.tCdf(lower, df);
+            return stats.tCdf(upper, df) - stats.tCdf(lower, df);
+        },
+        chi2Cdf: (lower: number, upper: number, df: number) => {
+            function incompleteGamma(x: number, a: number) {
+                if (x <= 0) return 0;
+                if (x >= 1) return 1;
+                const bt = (window as any).math.exp((window as any).math.gammaln(a) + a * Math.log(x) - x);
+                if (x < a + 1) {
+                    return bt * continuedFraction(x, a) / a;
+                } else {
+                    return 1 - bt * continuedFraction(1 - x, a) / a;
+                }
+            }
+            function continuedFraction(x: number, a: number) {
+                const maxIterations = 100;
+                const epsilon = 1e-15;
+                let am = 1, bm = 1, az = 1, qab = a, qap = a + 1, qam = a - 1, bz = 1 - qab * x / qap;
+                for (let i = 1; i <= maxIterations; i++) {
+                    let d = i * (a - i) * x / ((qam + 2 * i) * (a + 2 * i));
+                    let ap = az + d * am;
+                    let bp = bz + d * bm;
+                    d = -(a + i) * (qab + i) * x / ((a + 2 * i) * (qap + 2 * i));
+                    let app = ap + d * az;
+                    let bpp = bp + d * bz;
+                    am = ap / bpp;
+                    bm = bp / bpp;
+                    az = app / bpp;
+                    bz = 1;
+                    if (Math.abs(az - am) < (epsilon * Math.abs(az))) return az;
+                }
+                return az;
+            }
+            const lowerGamma = incompleteGamma(lower / 2, df / 2);
+            const upperGamma = incompleteGamma(upper / 2, df / 2);
+            return upperGamma - lowerGamma;
+        }
+    };
 
     // --- SAMPLE DATASETS ---
     const datasets: any = {
@@ -225,14 +344,26 @@ export default function Home() {
     function closeModal() {
       appState.modal = null;
       const backdrop = document.querySelector('.modal-backdrop');
-      const modal = document.querySelector('.modal');
+      const modal = document.querySelector('.modal:not(.help-modal)');
       if (backdrop) backdrop.remove();
       if (modal) modal.remove();
+      
+      // Don't close help modal when closing other modals
+      const helpModal = document.getElementById('help-modal');
+      if (helpModal) {
+        // Keep help modal open - don't remove it
+      }
     }
     (window as any).closeModal = closeModal;
 
     function renderModal(modalConfig: any) {
-        closeModal();
+        // Close other modals but preserve help modal
+        appState.modal = null;
+        const existingBackdrop = document.querySelector('.modal-backdrop');
+        const existingModal = document.querySelector('.modal:not(.help-modal)');
+        if (existingBackdrop) existingBackdrop.remove();
+        if (existingModal) existingModal.remove();
+        
         const { title, fields, buttons, requiresData = true } = modalConfig;
         const colNames = appState.spreadsheet.columns.map((c: any) => c.name).filter(Boolean);
         if (requiresData && colNames.length === 0) { showMessageModal('Spreadsheet is empty. Add data to a named column first.'); return; }
@@ -255,10 +386,10 @@ export default function Home() {
         buttons.forEach((btn: any) => { modalHTML += `<button class="btn ${btn.class || ''}" data-action="${btn.action}">${btn.label}</button>`; });
         modalHTML += `</div></div>`;
 
-        const backdrop = document.createElement('div');
-        backdrop.className = 'modal-backdrop';
-        backdrop.onclick = closeModal;
-        document.body.insertAdjacentElement('afterbegin', backdrop);
+        const newBackdrop = document.createElement('div');
+        newBackdrop.className = 'modal-backdrop';
+        newBackdrop.onclick = closeModal;
+        document.body.insertAdjacentElement('afterbegin', newBackdrop);
         document.body.insertAdjacentHTML('beforeend', modalHTML);
         appState.modal = document.querySelector('.modal');
     }
@@ -353,6 +484,333 @@ export default function Home() {
         runTTestFromStats: () => { const mu0 = parseFloat((document.getElementById('mu0') as HTMLInputElement).value); const mean = parseFloat((document.getElementById('mean') as HTMLInputElement).value); const sx = parseFloat((document.getElementById('sx') as HTMLInputElement).value); const n = parseInt((document.getElementById('n') as HTMLInputElement).value); const alt = (document.getElementById('alt') as HTMLInputElement).value; actions.runTTest(mu0, mean, sx, n, alt); },
         runTTestFromData: () => { const mu0 = parseFloat((document.getElementById('mu0') as HTMLInputElement).value); const listName = (document.getElementById('list') as HTMLInputElement).value; const alt = (document.getElementById('alt') as HTMLInputElement).value; const data = getColumnData(listName); if (data.length < 2) { showMessageModal("List must have >= 2 numbers."); return; } const mean = stats.mean(data); const sx = stats.stddev(data); const n = data.length; actions.runTTest(mu0, mean, sx, n, alt); },
         runTTest(mu0: number, mean: number, sx: number, n: number, alt: any) { if ([mu0,mean,sx,n].some(isNaN)) { showMessageModal("Invalid input."); return; } const df = n - 1; const tStat = (mean - mu0) / (sx / Math.sqrt(n)); let pVal; if (alt === 'μ < μ₀') pVal = stats.tCdf(tStat, df); else if (alt === 'μ > μ₀') pVal = 1 - stats.tCdf(tStat, df); else pVal = 2 * (1 - stats.tCdf(Math.abs(tStat), df)); addHistoryEntry({type: 'tTest', input: `t-Test(μ${alt.slice(1)})`, output: `t=${tStat.toFixed(4)}\np=${pVal.toFixed(4)}`, data: {tStat, pVal, df, mu0, mean, sx, n}}); closeModal(); },
+        
+        // New functions
+        showTCdfModal: () => renderModal({ title: 'tCdf', fields: [ { id: 'lower', label: 'Lower Bound', value: '-1E99' }, { id: 'upper', label: 'Upper Bound', value: '1E99' }, { id: 'df', label: 'df' } ], buttons: [ { label: 'OK', action: 'runTCdf', class:'btn-primary' }, { label: 'Cancel', action: 'closeModal' } ], requiresData: false }),
+        runTCdf: () => { const lower = parseFloat((document.getElementById('lower') as HTMLInputElement).value); const upper = parseFloat((document.getElementById('upper') as HTMLInputElement).value); const df = parseInt((document.getElementById('df') as HTMLInputElement).value); if ([lower, upper, df].some(isNaN)) { showMessageModal("Invalid input."); return; } const result = stats.tcdf(lower, upper, df); addHistoryEntry({type: 'TCdf', input: `tcdf(${lower},${upper},${df})`, output: result.toFixed(6), data: {lower, upper, df, result}}); closeModal(); },
+        
+        showInvTModal: () => renderModal({ title: 'invT', fields: [ { id: 'area', label: 'Area Left' }, { id: 'df', label: 'df' } ], buttons: [ { label: 'OK', action: 'runInvT', class:'btn-primary' }, { label: 'Cancel', action: 'closeModal' } ], requiresData: false }),
+        runInvT: () => { const area = parseFloat((document.getElementById('area') as HTMLInputElement).value); const df = parseInt((document.getElementById('df') as HTMLInputElement).value); if ([area, df].some(isNaN)) { showMessageModal("Invalid input."); return; } const result = stats.invT(area, df); addHistoryEntry({type: 'InvT', input: `invT(${area},${df})`, output: result.toFixed(6), data: {area, df, result}}); closeModal(); },
+        
+        showChi2CdfModal: () => renderModal({ title: 'χ²Cdf', fields: [ { id: 'lower', label: 'Lower Bound', value: '0' }, { id: 'upper', label: 'Upper Bound', value: '1E99' }, { id: 'df', label: 'df' } ], buttons: [ { label: 'OK', action: 'runChi2Cdf', class:'btn-primary' }, { label: 'Cancel', action: 'closeModal' } ], requiresData: false }),
+        runChi2Cdf: () => { const lower = parseFloat((document.getElementById('lower') as HTMLInputElement).value); const upper = parseFloat((document.getElementById('upper') as HTMLInputElement).value); const df = parseInt((document.getElementById('df') as HTMLInputElement).value); if ([lower, upper, df].some(isNaN)) { showMessageModal("Invalid input."); return; } const result = stats.chi2Cdf(lower, upper, df); addHistoryEntry({type: 'Chi2Cdf', input: `χ²cdf(${lower},${upper},${df})`, output: result.toFixed(6), data: {lower, upper, df, result}}); closeModal(); },
+        
+        show2SampTTestModal: () => renderModal({ title: '2-SampTTest', fields: [ { id: 'x1', label: 'x̄₁', type:'number' }, { id: 'sx1', label: 'Sx₁', type:'number' }, { id: 'n1', label: 'n₁', type:'number' }, { id: 'x2', label: 'x̄₂', type:'number' }, { id: 'sx2', label: 'Sx₂', type:'number' }, { id: 'n2', label: 'n₂', type:'number' }, { id: 'alt', label: 'Alternate Hyp', type: 'select', options: ['μ₁ ≠ μ₂', 'μ₁ < μ₂', 'μ₁ > μ₂'] } ], buttons: [ { label: 'OK', action: 'run2SampTTest', class:'btn-primary' }, { label: 'Cancel', action: 'closeModal' } ], requiresData: false }),
+        run2SampTTest: () => { const x1 = parseFloat((document.getElementById('x1') as HTMLInputElement).value); const sx1 = parseFloat((document.getElementById('sx1') as HTMLInputElement).value); const n1 = parseInt((document.getElementById('n1') as HTMLInputElement).value); const x2 = parseFloat((document.getElementById('x2') as HTMLInputElement).value); const sx2 = parseFloat((document.getElementById('sx2') as HTMLInputElement).value); const n2 = parseInt((document.getElementById('n2') as HTMLInputElement).value); const alt = (document.getElementById('alt') as HTMLInputElement).value; if ([x1,sx1,n1,x2,sx2,n2].some(isNaN)) { showMessageModal("Invalid input."); return; } const df = Math.min(n1-1, n2-1); const tStat = (x1 - x2) / Math.sqrt((sx1*sx1/n1) + (sx2*sx2/n2)); let pVal; if (alt === 'μ₁ < μ₂') pVal = stats.tCdf(tStat, df); else if (alt === 'μ₁ > μ₂') pVal = 1 - stats.tCdf(tStat, df); else pVal = 2 * (1 - stats.tCdf(Math.abs(tStat), df)); addHistoryEntry({type: '2SampTTest', input: `2-SampTTest(${alt})`, output: `t=${tStat.toFixed(4)}\np=${pVal.toFixed(4)}\ndf=${df}`, data: {tStat, pVal, df, x1, sx1, n1, x2, sx2, n2}}); closeModal(); },
+        
+        show2SampTIntModal: () => renderModal({ title: '2-SampTInt', fields: [ { id: 'x1', label: 'x̄₁', type:'number' }, { id: 'sx1', label: 'Sx₁', type:'number' }, { id: 'n1', label: 'n₁', type:'number' }, { id: 'x2', label: 'x̄₂', type:'number' }, { id: 'sx2', label: 'Sx₂', type:'number' }, { id: 'n2', label: 'n₂', type:'number' }, { id: 'clevel', label: 'C-Level', type:'number', value: '0.95' } ], buttons: [ { label: 'OK', action: 'run2SampTInt', class:'btn-primary' }, { label: 'Cancel', action: 'closeModal' } ], requiresData: false }),
+        run2SampTInt: () => { const x1 = parseFloat((document.getElementById('x1') as HTMLInputElement).value); const sx1 = parseFloat((document.getElementById('sx1') as HTMLInputElement).value); const n1 = parseInt((document.getElementById('n1') as HTMLInputElement).value); const x2 = parseFloat((document.getElementById('x2') as HTMLInputElement).value); const sx2 = parseFloat((document.getElementById('sx2') as HTMLInputElement).value); const n2 = parseInt((document.getElementById('n2') as HTMLInputElement).value); const cLevel = parseFloat((document.getElementById('clevel') as HTMLInputElement).value); if ([x1,sx1,n1,x2,sx2,n2,cLevel].some(isNaN)) { showMessageModal("Invalid input."); return; } const df = Math.min(n1-1, n2-1); const alpha = (1 - cLevel) / 2; const tStar = Math.abs(stats.invT(alpha, df)); const se = Math.sqrt((sx1*sx1/n1) + (sx2*sx2/n2)); const me = tStar * se; const lower = (x1 - x2) - me; const upper = (x1 - x2) + me; addHistoryEntry({type: '2SampTInt', input: `2-SampTInt(${cLevel*100}%)`, output: `(${lower.toFixed(4)}, ${upper.toFixed(4)})`, data: {lower, upper, me, df, x1, sx1, n1, x2, sx2, n2}}); closeModal(); },
+        
+        show1PropZTestModal: () => renderModal({ title: '1-PropZTest', fields: [ { id: 'p0', label: 'p₀', type:'number' }, { id: 'x', label: 'x', type:'number' }, { id: 'n', label: 'n', type:'number' }, { id: 'alt', label: 'Alternate Hyp', type: 'select', options: ['p ≠ p₀', 'p < p₀', 'p > p₀'] } ], buttons: [ { label: 'OK', action: 'run1PropZTest', class:'btn-primary' }, { label: 'Cancel', action: 'closeModal' } ], requiresData: false }),
+        run1PropZTest: () => { const p0 = parseFloat((document.getElementById('p0') as HTMLInputElement).value); const x = parseInt((document.getElementById('x') as HTMLInputElement).value); const n = parseInt((document.getElementById('n') as HTMLInputElement).value); const alt = (document.getElementById('alt') as HTMLInputElement).value; if ([p0,x,n].some(isNaN)) { showMessageModal("Invalid input."); return; } const pHat = x / n; const se = Math.sqrt(p0 * (1-p0) / n); const zStat = (pHat - p0) / se; let pVal; if (alt === 'p < p₀') pVal = stats.normalCdf(-Infinity, zStat, 0, 1); else if (alt === 'p > p₀') pVal = stats.normalCdf(zStat, Infinity, 0, 1); else pVal = 2 * (1 - stats.normalCdf(-Math.abs(zStat), Math.abs(zStat), 0, 1)); addHistoryEntry({type: '1PropZTest', input: `1-PropZTest(${alt})`, output: `z=${zStat.toFixed(4)}\np=${pVal.toFixed(4)}`, data: {zStat, pVal, p0, x, n, pHat}}); closeModal(); },
+        
+        show2PropZTestModal: () => renderModal({ title: '2-PropZTest', fields: [ { id: 'x1', label: 'x₁', type:'number' }, { id: 'n1', label: 'n₁', type:'number' }, { id: 'x2', label: 'x₂', type:'number' }, { id: 'n2', label: 'n₂', type:'number' }, { id: 'alt', label: 'Alternate Hyp', type: 'select', options: ['p₁ ≠ p₂', 'p₁ < p₂', 'p₁ > p₂'] } ], buttons: [ { label: 'OK', action: 'run2PropZTest', class:'btn-primary' }, { label: 'Cancel', action: 'closeModal' } ], requiresData: false }),
+        run2PropZTest: () => { const x1 = parseInt((document.getElementById('x1') as HTMLInputElement).value); const n1 = parseInt((document.getElementById('n1') as HTMLInputElement).value); const x2 = parseInt((document.getElementById('x2') as HTMLInputElement).value); const n2 = parseInt((document.getElementById('n2') as HTMLInputElement).value); const alt = (document.getElementById('alt') as HTMLInputElement).value; if ([x1,n1,x2,n2].some(isNaN)) { showMessageModal("Invalid input."); return; } const p1 = x1 / n1; const p2 = x2 / n2; const pPooled = (x1 + x2) / (n1 + n2); const se = Math.sqrt(pPooled * (1-pPooled) * (1/n1 + 1/n2)); const zStat = (p1 - p2) / se; let pVal; if (alt === 'p₁ < p₂') pVal = stats.normalCdf(-Infinity, zStat, 0, 1); else if (alt === 'p₁ > p₂') pVal = stats.normalCdf(zStat, Infinity, 0, 1); else pVal = 2 * (1 - stats.normalCdf(-Math.abs(zStat), Math.abs(zStat), 0, 1)); addHistoryEntry({type: '2PropZTest', input: `2-PropZTest(${alt})`, output: `z=${zStat.toFixed(4)}\np=${pVal.toFixed(4)}`, data: {zStat, pVal, x1, n1, x2, n2, p1, p2}}); closeModal(); },
+        
+        show1PropZIntModal: () => renderModal({ title: '1-PropZInt', fields: [ { id: 'x', label: 'x', type:'number' }, { id: 'n', label: 'n', type:'number' }, { id: 'clevel', label: 'C-Level', type:'number', value: '0.95' } ], buttons: [ { label: 'OK', action: 'run1PropZInt', class:'btn-primary' }, { label: 'Cancel', action: 'closeModal' } ], requiresData: false }),
+        run1PropZInt: () => { const x = parseInt((document.getElementById('x') as HTMLInputElement).value); const n = parseInt((document.getElementById('n') as HTMLInputElement).value); const cLevel = parseFloat((document.getElementById('clevel') as HTMLInputElement).value); if ([x,n,cLevel].some(isNaN)) { showMessageModal("Invalid input."); return; } const pHat = x / n; const alpha = (1 - cLevel) / 2; const zStar = Math.abs(stats.invNorm(alpha, 0, 1)); const se = Math.sqrt(pHat * (1-pHat) / n); const me = zStar * se; const lower = Math.max(0, pHat - me); const upper = Math.min(1, pHat + me); addHistoryEntry({type: '1PropZInt', input: `1-PropZInt(${cLevel*100}%)`, output: `(${lower.toFixed(4)}, ${upper.toFixed(4)})`, data: {lower, upper, me, x, n, pHat}}); closeModal(); },
+        
+        show2PropZIntModal: () => renderModal({ title: '2-PropZInt', fields: [ { id: 'x1', label: 'x₁', type:'number' }, { id: 'n1', label: 'n₁', type:'number' }, { id: 'x2', label: 'x₂', type:'number' }, { id: 'n2', label: 'n₂', type:'number' }, { id: 'clevel', label: 'C-Level', type:'number', value: '0.95' } ], buttons: [ { label: 'OK', action: 'run2PropZInt', class:'btn-primary' }, { label: 'Cancel', action: 'closeModal' } ], requiresData: false }),
+        run2PropZInt: () => { const x1 = parseInt((document.getElementById('x1') as HTMLInputElement).value); const n1 = parseInt((document.getElementById('n1') as HTMLInputElement).value); const x2 = parseInt((document.getElementById('x2') as HTMLInputElement).value); const n2 = parseInt((document.getElementById('n2') as HTMLInputElement).value); const cLevel = parseFloat((document.getElementById('clevel') as HTMLInputElement).value); if ([x1,n1,x2,n2,cLevel].some(isNaN)) { showMessageModal("Invalid input."); return; } const p1 = x1 / n1; const p2 = x2 / n2; const alpha = (1 - cLevel) / 2; const zStar = Math.abs(stats.invNorm(alpha, 0, 1)); const se = Math.sqrt((p1*(1-p1)/n1) + (p2*(1-p2)/n2)); const me = zStar * se; const lower = (p1 - p2) - me; const upper = (p1 - p2) + me; addHistoryEntry({type: '2PropZInt', input: `2-PropZInt(${cLevel*100}%)`, output: `(${lower.toFixed(4)}, ${upper.toFixed(4)})`, data: {lower, upper, me, x1, n1, x2, n2, p1, p2}}); closeModal(); },
+        
+        showChi2TestModal: () => renderModal({ title: 'χ²-Test', fields: [ { id: 'observed', label: 'Observed Matrix (comma-separated rows)', type:'text', placeholder: '10,15,20;5,10,15' } ], buttons: [ { label: 'OK', action: 'runChi2Test', class:'btn-primary' }, { label: 'Cancel', action: 'closeModal' } ], requiresData: false }),
+        runChi2Test: () => { const observedStr = (document.getElementById('observed') as HTMLInputElement).value; try { const rows = observedStr.split(';').map(row => row.split(',').map(cell => parseInt(cell.trim()))); const r = rows.length; const c = rows[0].length; let total = 0; for (let i = 0; i < r; i++) { for (let j = 0; j < c; j++) { total += rows[i][j]; } } const expected = []; let chi2 = 0; for (let i = 0; i < r; i++) { expected[i] = []; for (let j = 0; j < c; j++) { const rowSum = rows[i].reduce((sum, val) => sum + val, 0); const colSum = rows.reduce((sum, row) => sum + row[j], 0); expected[i][j] = (rowSum * colSum) / total; chi2 += Math.pow(rows[i][j] - expected[i][j], 2) / expected[i][j]; } } const df = (r - 1) * (c - 1); const pVal = 1 - stats.chi2Cdf(0, chi2, df); addHistoryEntry({type: 'Chi2Test', input: `χ²-Test`, output: `χ²=${chi2.toFixed(4)}\np=${pVal.toFixed(4)}\ndf=${df}`, data: {chi2, pVal, df, observed: rows, expected}}); closeModal(); } catch (e) { showMessageModal("Invalid matrix format. Use format: '10,15,20;5,10,15'"); } },
+        
+        showChi2GOFTestModal: () => renderModal({ title: 'χ²-GOF-Test', fields: [ { id: 'observed', label: 'Observed List (comma-separated)', type:'text', placeholder: '10,15,20,25' }, { id: 'expected', label: 'Expected List (comma-separated)', type:'text', placeholder: '12,18,18,12' } ], buttons: [ { label: 'OK', action: 'runChi2GOFTest', class:'btn-primary' }, { label: 'Cancel', action: 'closeModal' } ], requiresData: false }),
+        runChi2GOFTest: () => { const observedStr = (document.getElementById('observed') as HTMLInputElement).value; const expectedStr = (document.getElementById('expected') as HTMLInputElement).value; try { const observed = observedStr.split(',').map(x => parseInt(x.trim())); const expected = expectedStr.split(',').map(x => parseFloat(x.trim())); if (observed.length !== expected.length) { showMessageModal("Observed and expected lists must have same length."); return; } let chi2 = 0; for (let i = 0; i < observed.length; i++) { chi2 += Math.pow(observed[i] - expected[i], 2) / expected[i]; } const df = observed.length - 1; const pVal = 1 - stats.chi2Cdf(0, chi2, df); addHistoryEntry({type: 'Chi2GOFTest', input: `χ²-GOF-Test`, output: `χ²=${chi2.toFixed(4)}\np=${pVal.toFixed(4)}\ndf=${df}`, data: {chi2, pVal, df, observed, expected}}); closeModal(); } catch (e) { showMessageModal("Invalid list format. Use comma-separated numbers."); } },
+        
+        // Help system functions
+        showHowToUse: () => {
+            const helpContent = `
+                <div class="text-center mb-6">
+                    <h3 class="text-lg font-bold mb-4">How to Use the Statistics Menu</h3>
+                    <p class="text-sm text-muted-foreground mb-4">
+                        Click on any menu item below to see a detailed example and explanation of how to use that statistical function.
+                    </p>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="help-category">
+                        <h4 class="font-semibold text-blue-600 mb-2">📊 Descriptive Statistics</h4>
+                        <button class="btn btn-sm w-full mb-2" data-action="showHelp" data-help="oneVarStats">One-Variable Stats</button>
+                        <button class="btn btn-sm w-full" data-action="showHelp" data-help="linReg">LinReg (a+bx)</button>
+                    </div>
+                    <div class="help-category">
+                        <h4 class="font-semibold text-green-600 mb-2">🎲 Probability Distributions</h4>
+                        <button class="btn btn-sm w-full mb-2" data-action="showHelp" data-help="normalCdf">Normal Cdf</button>
+                        <button class="btn btn-sm w-full mb-2" data-action="showHelp" data-help="invNorm">Inverse Normal</button>
+                        <button class="btn btn-sm w-full mb-2" data-action="showHelp" data-help="tcdf">tCdf</button>
+                        <button class="btn btn-sm w-full" data-action="showHelp" data-help="binomPdf">Binomial Pdf</button>
+                    </div>
+                    <div class="help-category">
+                        <h4 class="font-semibold text-purple-600 mb-2">📈 Confidence Intervals</h4>
+                        <button class="btn btn-sm w-full mb-2" data-action="showHelp" data-help="tInterval">1-Sample t-Interval</button>
+                        <button class="btn btn-sm w-full mb-2" data-action="showHelp" data-help="propZInt">1-Sample z-Interval</button>
+                        <button class="btn btn-sm w-full" data-action="showHelp" data-help="twoSampTInt">2-Sample t-Interval</button>
+                    </div>
+                    <div class="help-category">
+                        <h4 class="font-semibold text-orange-600 mb-2">🔬 Significance Tests</h4>
+                        <button class="btn btn-sm w-full mb-2" data-action="showHelp" data-help="tTest">1-Sample t-Test</button>
+                        <button class="btn btn-sm w-full mb-2" data-action="showHelp" data-help="propZTest">1-Sample z-Test</button>
+                        <button class="btn btn-sm w-full" data-action="showHelp" data-help="chi2Test">χ²-Test</button>
+                    </div>
+                </div>
+            `;
+            
+            // Create single draggable help modal without backdrop
+            const helpModalHTML = `<div class="modal help-modal" id="help-modal" style="max-width: 800px; width: 90vw; position: fixed; top: 50%; right: 20px; transform: translateY(-50%); z-index: 1001;">
+                <div class="modal-title">How to Use Statistics Functions</div>
+                <div class="modal-content" id="help-content">
+                    ${helpContent}
+                </div>
+                <div class="modal-buttons">
+                    <button class="btn btn-secondary" id="help-back-btn" data-action="goBackToHelp" style="display: none;">← Back</button>
+                    <button class="btn btn-primary" data-action="closeHelpModal">Close</button>
+                </div>
+            </div>`;
+            
+            document.body.insertAdjacentHTML('beforeend', helpModalHTML);
+            const helpModal = document.getElementById('help-modal');
+            
+            if (helpModal) {
+                makeModalDraggable(helpModal);
+                // Store the main help content for back navigation
+                (window as any).mainHelpContent = helpContent;
+            }
+        },
+        
+        showHelp: (event: any) => {
+            const helpType = event.target.dataset.help;
+            const helpData = actions.getHelpContent(helpType);
+            if (helpData) {
+                // Update existing help modal content
+                const helpModal = document.getElementById('help-modal');
+                const helpContent = document.getElementById('help-content');
+                const backBtn = document.getElementById('help-back-btn');
+                
+                if (helpModal && helpContent && backBtn) {
+                    // Update title and content
+                    const titleElement = helpModal.querySelector('.modal-title');
+                    if (titleElement) {
+                        titleElement.textContent = helpData.title;
+                    }
+                    
+                    helpContent.innerHTML = helpData.content;
+                    
+                    // Show back button
+                    backBtn.style.display = 'inline-block';
+                }
+            }
+        },
+        
+        goBackToHelp: () => {
+            // Return to main help menu
+            const helpModal = document.getElementById('help-modal');
+            const helpContent = document.getElementById('help-content');
+            const backBtn = document.getElementById('help-back-btn');
+            
+            if (helpModal && helpContent && backBtn) {
+                // Restore original title and content
+                const titleElement = helpModal.querySelector('.modal-title');
+                if (titleElement) {
+                    titleElement.textContent = 'How to Use Statistics Functions';
+                }
+                
+                helpContent.innerHTML = (window as any).mainHelpContent;
+                
+                // Hide back button
+                backBtn.style.display = 'none';
+            }
+        },
+        
+        closeHelpModal: () => {
+            // Specifically close the help modal
+            const helpModal = document.getElementById('help-modal');
+            if (helpModal) {
+                helpModal.remove();
+            }
+        },
+        
+        getHelpContent: (helpType: string) => {
+            const helpExamples: any = {
+                oneVarStats: {
+                    title: 'One-Variable Statistics',
+                    content: `
+                        <div class="space-y-4">
+                            <div class="bg-blue-50 p-4 rounded">
+                                <h4 class="font-bold mb-2">📋 Example Question:</h4>
+                                <p class="text-sm">A teacher wants to analyze the test scores of her 25 students. The scores are: 78, 82, 85, 88, 90, 92, 94, 95, 96, 97, 98, 99, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100</p>
+                            </div>
+                            
+                            <div class="bg-green-50 p-4 rounded">
+                                <h4 class="font-bold mb-2">🔧 How to Use:</h4>
+                                <ol class="text-sm list-decimal list-inside space-y-1">
+                                    <li>Enter your data in the spreadsheet</li>
+                                    <li>Click "Stats Menu" → "One-Variable Stats"</li>
+                                    <li>Select your data column from the dropdown</li>
+                                    <li>Click "OK" to see results</li>
+                                </ol>
+                            </div>
+                            
+                            <div class="bg-yellow-50 p-4 rounded">
+                                <h4 class="font-bold mb-2">📊 What You'll Get:</h4>
+                                <ul class="text-sm list-disc list-inside space-y-1">
+                                    <li><strong>n:</strong> Sample size (25)</li>
+                                    <li><strong>x̄:</strong> Sample mean (96.8)</li>
+                                    <li><strong>Sx:</strong> Sample standard deviation (6.2)</li>
+                                    <li><strong>MinX:</strong> Minimum value (78)</li>
+                                    <li><strong>Q₁:</strong> First quartile (90)</li>
+                                    <li><strong>Median:</strong> Middle value (100)</li>
+                                    <li><strong>Q₃:</strong> Third quartile (100)</li>
+                                    <li><strong>MaxX:</strong> Maximum value (100)</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="bg-purple-50 p-4 rounded">
+                                <h4 class="font-bold mb-2">💡 Key Concepts:</h4>
+                                <ul class="text-sm list-disc list-inside space-y-1">
+                                    <li><strong>Mean (x̄):</strong> Average of all values</li>
+                                    <li><strong>Standard Deviation (Sx):</strong> Measure of spread around the mean</li>
+                                    <li><strong>Quartiles:</strong> Divide data into four equal parts</li>
+                                    <li><strong>Five-Number Summary:</strong> Min, Q₁, Median, Q₃, Max</li>
+                                </ul>
+                            </div>
+                        </div>
+                    `
+                },
+                
+                tTest: {
+                    title: '1-Sample t-Test (mean)',
+                    content: `
+                        <div class="space-y-4">
+                            <div class="bg-blue-50 p-4 rounded">
+                                <h4 class="font-bold mb-2">📋 Example Question:</h4>
+                                <p class="text-sm">A nutritionist claims that the average daily calorie intake for teenagers is 2000 calories. A sample of 30 teenagers has a mean intake of 1850 calories with a standard deviation of 300 calories. Test if the average is significantly different from 2000 calories.</p>
+                            </div>
+                            
+                            <div class="bg-green-50 p-4 rounded">
+                                <h4 class="font-bold mb-2">🔧 How to Use:</h4>
+                                <ol class="text-sm list-decimal list-inside space-y-1">
+                                    <li>Click "Stats Menu" → "1-Sample t-Test (mean)"</li>
+                                    <li>Enter μ₀ = 2000 (null hypothesis value)</li>
+                                    <li>Enter x̄ = 1850 (sample mean)</li>
+                                    <li>Enter Sx = 300 (sample standard deviation)</li>
+                                    <li>Enter n = 30 (sample size)</li>
+                                    <li>Select alternative hypothesis: "μ ≠ μ₀"</li>
+                                    <li>Click "OK" to see results</li>
+                                </ol>
+                            </div>
+                            
+                            <div class="bg-yellow-50 p-4 rounded">
+                                <h4 class="font-bold mb-2">📊 What You'll Get:</h4>
+                                <ul class="text-sm list-disc list-inside space-y-1">
+                                    <li><strong>t-statistic:</strong> -2.74</li>
+                                    <li><strong>p-value:</strong> 0.0102</li>
+                                    <li><strong>df:</strong> 29 (degrees of freedom)</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="bg-purple-50 p-4 rounded">
+                                <h4 class="font-bold mb-2">💡 Key Concepts:</h4>
+                                <ul class="text-sm list-disc list-inside space-y-1">
+                                    <li><strong>Null Hypothesis (H₀):</strong> μ = 2000</li>
+                                    <li><strong>Alternative Hypothesis (Hₐ):</strong> μ ≠ 2000</li>
+                                    <li><strong>t-statistic:</strong> Measures how many standard errors the sample mean is from the hypothesized mean</li>
+                                    <li><strong>p-value:</strong> Probability of getting a result as extreme as observed, assuming H₀ is true</li>
+                                    <li><strong>Decision:</strong> If p < α (0.05), reject H₀</li>
+                                </ul>
+                            </div>
+                        </div>
+                    `
+                },
+                
+                tInterval: {
+                    title: '1-Sample t-Interval (mean)',
+                    content: `
+                        <div class="space-y-4">
+                            <div class="bg-blue-50 p-4 rounded">
+                                <h4 class="font-bold mb-2">📋 Example Question:</h4>
+                                <p class="text-sm">A researcher wants to estimate the average height of college students. A random sample of 25 students has a mean height of 68 inches with a standard deviation of 3 inches. Find a 95% confidence interval for the true mean height.</p>
+                            </div>
+                            
+                            <div class="bg-green-50 p-4 rounded">
+                                <h4 class="font-bold mb-2">🔧 How to Use:</h4>
+                                <ol class="text-sm list-decimal list-inside space-y-1">
+                                    <li>Click "Stats Menu" → "1-Sample t-Interval (mean)"</li>
+                                    <li>Enter x̄ = 68 (sample mean)</li>
+                                    <li>Enter Sx = 3 (sample standard deviation)</li>
+                                    <li>Enter n = 25 (sample size)</li>
+                                    <li>Enter C-Level = 0.95 (confidence level)</li>
+                                    <li>Click "OK" to see results</li>
+                                </ol>
+                            </div>
+                            
+                            <div class="bg-yellow-50 p-4 rounded">
+                                <h4 class="font-bold mb-2">📊 What You'll Get:</h4>
+                                <ul class="text-sm list-disc list-inside space-y-1">
+                                    <li><strong>Confidence Interval:</strong> (66.8, 69.2)</li>
+                                    <li><strong>Margin of Error:</strong> 1.2</li>
+                                    <li><strong>df:</strong> 24 (degrees of freedom)</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="bg-purple-50 p-4 rounded">
+                                <h4 class="font-bold mb-2">💡 Key Concepts:</h4>
+                                <ul class="text-sm list-disc list-inside space-y-1">
+                                    <li><strong>Confidence Level:</strong> 95% means we're 95% confident the interval contains the true parameter</li>
+                                    <li><strong>Margin of Error:</strong> Half the width of the interval</li>
+                                    <li><strong>Formula:</strong> x̄ ± t* × (Sx/√n)</li>
+                                    <li><strong>Interpretation:</strong> "We are 95% confident that the true mean height is between 66.8 and 69.2 inches."</li>
+                                </ul>
+                            </div>
+                        </div>
+                    `
+                },
+                
+                normalCdf: {
+                    title: 'Normal Cdf',
+                    content: `
+                        <div class="space-y-4">
+                            <div class="bg-blue-50 p-4 rounded">
+                                <h4 class="font-bold mb-2">📋 Example Question:</h4>
+                                <p class="text-sm">The heights of adult males are normally distributed with mean 70 inches and standard deviation 3 inches. What is the probability that a randomly selected adult male is between 68 and 72 inches tall?</p>
+                            </div>
+                            
+                            <div class="bg-green-50 p-4 rounded">
+                                <h4 class="font-bold mb-2">🔧 How to Use:</h4>
+                                <ol class="text-sm list-decimal list-inside space-y-1">
+                                    <li>Click "Stats Menu" → "Normal Cdf"</li>
+                                    <li>Enter Lower Bound = 68</li>
+                                    <li>Enter Upper Bound = 72</li>
+                                    <li>Enter μ = 70 (mean)</li>
+                                    <li>Enter σ = 3 (standard deviation)</li>
+                                    <li>Click "OK" to see results</li>
+                                </ol>
+                            </div>
+                            
+                            <div class="bg-yellow-50 p-4 rounded">
+                                <h4 class="font-bold mb-2">📊 What You'll Get:</h4>
+                                <ul class="text-sm list-disc list-inside space-y-1">
+                                    <li><strong>Probability:</strong> 0.4950 (or about 49.5%)</li>
+                                </ul>
+                            </div>
+                            
+                            <div class="bg-purple-50 p-4 rounded">
+                                <h4 class="font-bold mb-2">💡 Key Concepts:</h4>
+                                <ul class="text-sm list-disc list-inside space-y-1">
+                                    <li><strong>Normal Distribution:</strong> Bell-shaped, symmetric distribution</li>
+                                    <li><strong>Cdf:</strong> Cumulative Distribution Function - area under the curve</li>
+                                    <li><strong>68-95-99.7 Rule:</strong> About 68% of data within 1σ, 95% within 2σ, 99.7% within 3σ</li>
+                                    <li><strong>Z-score:</strong> (x - μ)/σ measures how many standard deviations from mean</li>
+                                </ul>
+                            </div>
+                        </div>
+                    `
+                }
+            };
+            
+            return helpExamples[helpType] || null;
+        },
+        
         showClearConfirmModal: () => renderModal({ title: 'Confirm Clear', fields: [{ type: 'static', label: 'Clear all spreadsheet data?' }], buttons: [ { label: 'OK', action: 'clearSpreadsheet', class:'btn-primary' }, { label: 'Cancel', action: 'closeModal' } ], requiresData: false }),
         clearSpreadsheet: () => { appState.spreadsheet.columns = []; appState.spreadsheet.activeCell = { col: 0, row: 0 }; appState.spreadsheet.selectionStart = null; appState.spreadsheet.selectionEnd = null; appState.spreadsheet.isDataLoaded = false; renderSpreadsheet(); closeModal(); plotDefault(); },
         closeModal
@@ -361,23 +819,127 @@ export default function Home() {
 
     function showStatisticsMenu() {
         closeModal();
-        const menuItems = [
-            { label: 'One-Variable Stats', action: 'show1VarStatsModal' }, { label: 'LinReg (a+bx)', action: 'showLinRegModal' },
-            { label: 't-Test...', action: 'showTTestModalChooser' }, { label: 't-Interval...', action: 'showTIntervalModalChooser' },
-            { label: 'Normal Cdf', action: 'showNormalCdfModal' }, { label: 'Inverse Normal', action: 'showInvNormModal' },
-            { label: 'Binomial Pdf', action: 'showBinomPdfModal' }, { label: 'Binomial Cdf', action: 'showBinomCdfModal' },
+        
+        const categories = [
+            {
+                title: 'Descriptive Statistics',
+                color: 'bg-blue-100 border-blue-300 text-blue-800',
+                items: [
+                    { label: 'One-Variable Stats', action: 'show1VarStatsModal' },
+                    { label: 'LinReg (a+bx)', action: 'showLinRegModal' }
+                ]
+            },
+            {
+                title: 'Probability Distributions',
+                color: 'bg-green-100 border-green-300 text-green-800',
+                items: [
+                    { label: 'Binomial Pdf', action: 'showBinomPdfModal' },
+                    { label: 'Binomial Cdf', action: 'showBinomCdfModal' },
+                    { label: 'Normal Cdf', action: 'showNormalCdfModal' },
+                    { label: 'Inverse Normal', action: 'showInvNormModal' },
+                    { label: 'tCdf', action: 'showTCdfModal' },
+                    { label: 'invT', action: 'showInvTModal' },
+                    { label: 'χ²Cdf', action: 'showChi2CdfModal' }
+                ]
+            },
+            {
+                title: 'Confidence Intervals',
+                color: 'bg-purple-100 border-purple-300 text-purple-800',
+                items: [
+                    { label: '1-Sample t-Interval (mean)', action: 'showTIntervalModalChooser' },
+                    { label: '2-Sample t-Interval (mean)', action: 'show2SampTIntModal' },
+                    { label: '1-Sample z-Interval (proportion)', action: 'show1PropZIntModal' },
+                    { label: '2-Sample z-Interval (proportion)', action: 'show2PropZIntModal' }
+                ]
+            },
+            {
+                title: 'Significance Tests',
+                color: 'bg-orange-100 border-orange-300 text-orange-800',
+                items: [
+                    { label: '1-Sample t-Test (mean)', action: 'showTTestModalChooser' },
+                    { label: '2-Sample t-Test (mean)', action: 'show2SampTTestModal' },
+                    { label: '1-Sample z-Test (proportion)', action: 'show1PropZTestModal' },
+                    { label: '2-Sample z-Test (proportion)', action: 'show2PropZTestModal' },
+                    { label: 'χ²-Test (independence)', action: 'showChi2TestModal' },
+                    { label: 'χ²-GOF-Test (goodness of fit)', action: 'showChi2GOFTestModal' }
+                ]
+            }
         ];
-        let modalHTML = `<div class="modal" id="stats-menu"><div class="modal-title">Stats Menu</div>
-            <div class="grid grid-cols-2 gap-3 my-4">`;
-        menuItems.forEach(item => { modalHTML += `<button class="btn" data-action="${item.action}">${item.label}</button>`; });
-        modalHTML += `</div><div class="modal-buttons"><button class="btn btn-primary" data-action="closeModal">Close</button></div></div>`;
-        const backdrop = document.createElement('div');
-        backdrop.className = 'modal-backdrop';
-        backdrop.onclick = closeModal;
-        document.body.insertAdjacentElement('afterbegin', backdrop);
+        
+        let modalHTML = `<div class="modal" id="stats-menu" style="max-width: 800px; width: 90vw;"><div class="modal-title">Stats Menu</div>`;
+        
+        categories.forEach(category => {
+            modalHTML += `<div class="mb-6"><div class="text-sm font-semibold mb-2 ${category.color} px-3 py-1 rounded">${category.title}</div><div class="grid grid-cols-2 gap-3">`;
+            category.items.forEach(item => {
+                modalHTML += `<button class="btn text-sm" data-action="${item.action}">${item.label}</button>`;
+            });
+            modalHTML += `</div></div>`;
+        });
+        
+        modalHTML += `<div class="modal-buttons flex justify-between items-center"><button class="btn btn-secondary" data-action="showHowToUse">How to Use?</button><button class="btn btn-primary" data-action="closeModal">Close</button></div></div>`;
+        
+        // Create draggable modal without backdrop
         document.body.insertAdjacentHTML('beforeend', modalHTML);
         appState.modal = document.getElementById('stats-menu');
+        
+        // Make modal draggable
+        if (appState.modal) {
+            makeModalDraggable(appState.modal);
+        }
     }
+    function makeModalDraggable(modal: HTMLElement) {
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+        let startLeft = 0;
+        let startTop = 0;
+        
+        // Add draggable styles
+        modal.style.position = 'fixed';
+        modal.style.zIndex = '1000';
+        modal.style.cursor = 'move';
+        modal.style.userSelect = 'none';
+        
+        // Add drag handle to title
+        const title = modal.querySelector('.modal-title') as HTMLElement;
+        if (title) {
+            title.style.cursor = 'move';
+            title.addEventListener('mousedown', startDrag as EventListener);
+        } else {
+            // Fallback: make the entire modal draggable if no title found
+            modal.addEventListener('mousedown', startDrag as EventListener);
+        }
+        
+        function startDrag(e: Event) {
+            const mouseEvent = e as MouseEvent;
+            isDragging = true;
+            startX = mouseEvent.clientX;
+            startY = mouseEvent.clientY;
+            startLeft = parseInt(modal.style.left) || 0;
+            startTop = parseInt(modal.style.top) || 0;
+            
+            document.addEventListener('mousemove', drag as EventListener);
+            document.addEventListener('mouseup', stopDrag as EventListener);
+            e.preventDefault();
+        }
+        
+        function drag(e: MouseEvent) {
+            if (!isDragging) return;
+            
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+            
+            modal.style.left = (startLeft + deltaX) + 'px';
+            modal.style.top = (startTop + deltaY) + 'px';
+        }
+        
+        function stopDrag() {
+            isDragging = false;
+            document.removeEventListener('mousemove', drag);
+            document.removeEventListener('mouseup', stopDrag);
+        }
+    }
+    
     function handleAction(event: any) { const target = event.target.closest('[data-action]'); if (target) { const actionName = target.dataset.action; if (actionName && actions[actionName]) { actions[actionName](event); } } }
     function handleEditKey(event: any, value: any) { if (event.key === 'Enter') { event.preventDefault(); finishEditing(value, true); } else if (event.key === 'Escape') { appState.spreadsheet.isEditing = false; renderSpreadsheet(); } }
     (window as any).handleEditKey = handleEditKey;
