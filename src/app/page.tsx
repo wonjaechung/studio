@@ -396,7 +396,20 @@ export default function Home() {
     function showMessageModal(message: any) { renderModal({ title: 'Info', fields: [{ type: 'static', label: message }], buttons: [ { label: 'OK', action: 'closeModal', class:'btn-primary' } ], requiresData: false }); }
 
     // --- GRAPHING LOGIC ---
-    const plotlyLayout = { paper_bgcolor: 'transparent', plot_bgcolor: 'transparent', font: { color: 'hsl(var(--foreground))', size: 12, family: 'Inter, sans-serif' }, title: { font: { size: 16 } }, xaxis: { gridcolor: 'hsl(var(--border))', zerolinecolor: 'hsl(var(--muted))', titlefont: { size: 14 } }, yaxis: { gridcolor: 'hsl(var(--border))', zerolinecolor: 'hsl(var(--muted))', titlefont: { size: 14 } }, margin: { l: 60, r: 40, b: 50, t: 80 }, showlegend: false };
+    const plotlyLayout = { 
+        paper_bgcolor: 'transparent', 
+        plot_bgcolor: 'transparent', 
+        font: { color: 'hsl(var(--foreground))', size: 12, family: 'Inter, sans-serif' }, 
+        title: { font: { size: 16 } }, 
+        xaxis: { gridcolor: 'hsl(var(--border))', zerolinecolor: 'hsl(var(--muted))', titlefont: { size: 14 } }, 
+        yaxis: { gridcolor: 'hsl(var(--border))', zerolinecolor: 'hsl(var(--muted))', titlefont: { size: 14 } }, 
+        margin: { l: 50, r: 50, b: 50, t: 50 }, 
+        showlegend: false,
+        autosize: true,
+        height: undefined,
+        width: undefined,
+        uirevision: 'true'
+    };
     function plotDefault() { if(graphPlotDiv) graphPlotDiv.innerHTML = `<div class="flex items-center justify-center h-full text-muted-foreground">Drop columns here to plot data</div>`; }
     function plotHistogram(colIndex: any) { const col = appState.spreadsheet.columns[colIndex]; const data = getColumnData(col.name); const trace = { x: data, type: 'histogram', marker: { color: 'hsl(var(--primary))' }, nbinsx: 30 }; const layout = { ...plotlyLayout, title: `Histogram of ${col.name}`, yaxis: { ...plotlyLayout.yaxis, title: 'Frequency'}}; (window as any).Plotly.newPlot(graphPlotDiv, [trace], layout, {responsive: true}); }
     function plotBoxPlot(colIndex: any) { const col = appState.spreadsheet.columns[colIndex]; const data = getColumnData(col.name); if(data.length === 0) { showMessageModal("Cannot create box plot. The selected column has no numerical data."); return; } const fiveNumSum = { min: Math.min(...data), q1: stats.quartile(data, 0.25), med: stats.median(data), q3: stats.quartile(data, 0.75), max: Math.max(...data) }; const trace = { y: data, type: 'box', marker: { color: 'hsl(var(--primary))' }, name: col.name, boxpoints: false }; const layout = { ...plotlyLayout, title: `<b>Box Plot of ${col.name}</b><br><span style="font-size:12px">Min: ${fiveNumSum.min}, Q1: ${fiveNumSum.q1}, Med: ${fiveNumSum.med}, Q3: ${fiveNumSum.q3}, Max: ${fiveNumSum.max}</span>` }; (window as any).Plotly.newPlot(graphPlotDiv, [trace], layout, {responsive: true}); }
@@ -528,30 +541,47 @@ export default function Home() {
                         Click on any menu item below to see a detailed example and explanation of how to use that statistical function.
                     </p>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="help-category">
-                        <h4 class="font-semibold text-blue-600 mb-2">📊 Descriptive Statistics</h4>
-                        <button class="btn btn-sm w-full mb-2" data-action="showHelp" data-help="oneVarStats">One-Variable Stats</button>
-                        <button class="btn btn-sm w-full" data-action="showHelp" data-help="linReg">LinReg (a+bx)</button>
+                
+                <div class="mb-6">
+                    <div class="text-sm font-semibold mb-2 bg-blue-100 border-blue-300 text-blue-800 px-3 py-1 rounded">Descriptive Statistics</div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button class="btn text-sm" data-action="showHelp" data-help="oneVarStats">One-Variable Stats</button>
+                        <button class="btn text-sm" data-action="showHelp" data-help="linReg">LinReg (a+bx)</button>
                     </div>
-                    <div class="help-category">
-                        <h4 class="font-semibold text-green-600 mb-2">🎲 Probability Distributions</h4>
-                        <button class="btn btn-sm w-full mb-2" data-action="showHelp" data-help="normalCdf">Normal Cdf</button>
-                        <button class="btn btn-sm w-full mb-2" data-action="showHelp" data-help="invNorm">Inverse Normal</button>
-                        <button class="btn btn-sm w-full mb-2" data-action="showHelp" data-help="tcdf">tCdf</button>
-                        <button class="btn btn-sm w-full" data-action="showHelp" data-help="binomPdf">Binomial Pdf</button>
+                </div>
+                
+                <div class="mb-6">
+                    <div class="text-sm font-semibold mb-2 bg-green-100 border-green-300 text-green-800 px-3 py-1 rounded">Probability Distributions</div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button class="btn text-sm" data-action="showHelp" data-help="binomPdf">Binomial Pdf</button>
+                        <button class="btn text-sm" data-action="showHelp" data-help="binomCdf">Binomial Cdf</button>
+                        <button class="btn text-sm" data-action="showHelp" data-help="normalCdf">Normal Cdf</button>
+                        <button class="btn text-sm" data-action="showHelp" data-help="invNorm">Inverse Normal</button>
+                        <button class="btn text-sm" data-action="showHelp" data-help="tcdf">tCdf</button>
+                        <button class="btn text-sm" data-action="showHelp" data-help="invT">invT</button>
+                        <button class="btn text-sm" data-action="showHelp" data-help="chi2Cdf">χ²Cdf</button>
                     </div>
-                    <div class="help-category">
-                        <h4 class="font-semibold text-purple-600 mb-2">📈 Confidence Intervals</h4>
-                        <button class="btn btn-sm w-full mb-2" data-action="showHelp" data-help="tInterval">1-Sample t-Interval</button>
-                        <button class="btn btn-sm w-full mb-2" data-action="showHelp" data-help="propZInt">1-Sample z-Interval</button>
-                        <button class="btn btn-sm w-full" data-action="showHelp" data-help="twoSampTInt">2-Sample t-Interval</button>
+                </div>
+                
+                <div class="mb-6">
+                    <div class="text-sm font-semibold mb-2 bg-purple-100 border-purple-300 text-purple-800 px-3 py-1 rounded">Confidence Intervals</div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button class="btn text-sm" data-action="showHelp" data-help="tInterval">1-Sample t-Interval (mean)</button>
+                        <button class="btn text-sm" data-action="showHelp" data-help="twoSampTInt">2-Sample t-Interval (mean)</button>
+                        <button class="btn text-sm" data-action="showHelp" data-help="propZInt">1-Sample z-Interval (proportion)</button>
+                        <button class="btn text-sm" data-action="showHelp" data-help="twoPropZInt">2-Sample z-Interval (proportion)</button>
                     </div>
-                    <div class="help-category">
-                        <h4 class="font-semibold text-orange-600 mb-2">🔬 Significance Tests</h4>
-                        <button class="btn btn-sm w-full mb-2" data-action="showHelp" data-help="tTest">1-Sample t-Test</button>
-                        <button class="btn btn-sm w-full mb-2" data-action="showHelp" data-help="propZTest">1-Sample z-Test</button>
-                        <button class="btn btn-sm w-full" data-action="showHelp" data-help="chi2Test">χ²-Test</button>
+                </div>
+                
+                <div class="mb-6">
+                    <div class="text-sm font-semibold mb-2 bg-orange-100 border-orange-300 text-orange-800 px-3 py-1 rounded">Significance Tests</div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button class="btn text-sm" data-action="showHelp" data-help="tTest">1-Sample t-Test (mean)</button>
+                        <button class="btn text-sm" data-action="showHelp" data-help="twoSampTTest">2-Sample t-Test (mean)</button>
+                        <button class="btn text-sm" data-action="showHelp" data-help="propZTest">1-Sample z-Test (proportion)</button>
+                        <button class="btn text-sm" data-action="showHelp" data-help="twoPropZTest">2-Sample z-Test (proportion)</button>
+                        <button class="btn text-sm" data-action="showHelp" data-help="chi2Test">χ²-Test (independence)</button>
+                        <button class="btn text-sm" data-action="showHelp" data-help="chi2GOFTest">χ²-GOF-Test (goodness of fit)</button>
                     </div>
                 </div>
             `;
@@ -766,46 +796,837 @@ export default function Home() {
                     `
                 },
                 
-                normalCdf: {
-                    title: 'Normal Cdf',
-                    content: `
-                        <div class="space-y-4">
-                            <div class="bg-blue-50 p-4 rounded">
-                                <h4 class="font-bold mb-2">📋 Example Question:</h4>
-                                <p class="text-sm">The heights of adult males are normally distributed with mean 70 inches and standard deviation 3 inches. What is the probability that a randomly selected adult male is between 68 and 72 inches tall?</p>
-                            </div>
-                            
-                            <div class="bg-green-50 p-4 rounded">
-                                <h4 class="font-bold mb-2">🔧 How to Use:</h4>
-                                <ol class="text-sm list-decimal list-inside space-y-1">
-                                    <li>Click "Stats Menu" → "Normal Cdf"</li>
-                                    <li>Enter Lower Bound = 68</li>
-                                    <li>Enter Upper Bound = 72</li>
-                                    <li>Enter μ = 70 (mean)</li>
-                                    <li>Enter σ = 3 (standard deviation)</li>
-                                    <li>Click "OK" to see results</li>
-                                </ol>
-                            </div>
-                            
-                            <div class="bg-yellow-50 p-4 rounded">
-                                <h4 class="font-bold mb-2">📊 What You'll Get:</h4>
-                                <ul class="text-sm list-disc list-inside space-y-1">
-                                    <li><strong>Probability:</strong> 0.4950 (or about 49.5%)</li>
-                                </ul>
-                            </div>
-                            
-                            <div class="bg-purple-50 p-4 rounded">
-                                <h4 class="font-bold mb-2">💡 Key Concepts:</h4>
-                                <ul class="text-sm list-disc list-inside space-y-1">
-                                    <li><strong>Normal Distribution:</strong> Bell-shaped, symmetric distribution</li>
-                                    <li><strong>Cdf:</strong> Cumulative Distribution Function - area under the curve</li>
-                                    <li><strong>68-95-99.7 Rule:</strong> About 68% of data within 1σ, 95% within 2σ, 99.7% within 3σ</li>
-                                    <li><strong>Z-score:</strong> (x - μ)/σ measures how many standard deviations from mean</li>
-                                </ul>
-                            </div>
-                        </div>
-                    `
-                }
+                                 normalCdf: {
+                     title: 'Normal Cdf',
+                     content: `
+                         <div class="space-y-4">
+                             <div class="bg-blue-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📋 Example Question:</h4>
+                                 <p class="text-sm">The heights of adult males are normally distributed with mean 70 inches and standard deviation 3 inches. What is the probability that a randomly selected adult male is between 68 and 72 inches tall?</p>
+                             </div>
+                             
+                             <div class="bg-green-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">🔧 How to Use:</h4>
+                                 <ol class="text-sm list-decimal list-inside space-y-1">
+                                     <li>Click "Stats Menu" → "Normal Cdf"</li>
+                                     <li>Enter Lower Bound = 68</li>
+                                     <li>Enter Upper Bound = 72</li>
+                                     <li>Enter μ = 70 (mean)</li>
+                                     <li>Enter σ = 3 (standard deviation)</li>
+                                     <li>Click "OK" to see results</li>
+                                 </ol>
+                             </div>
+                             
+                             <div class="bg-yellow-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📊 What You'll Get:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Probability:</strong> 0.4950 (or about 49.5%)</li>
+                                 </ul>
+                             </div>
+                             
+                             <div class="bg-purple-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">💡 Key Concepts:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Normal Distribution:</strong> Bell-shaped, symmetric distribution</li>
+                                     <li><strong>Cdf:</strong> Cumulative Distribution Function - area under the curve</li>
+                                     <li><strong>68-95-99.7 Rule:</strong> About 68% of data within 1σ, 95% within 2σ, 99.7% within 3σ</li>
+                                     <li><strong>Z-score:</strong> (x - μ)/σ measures how many standard deviations from mean</li>
+                                 </ul>
+                             </div>
+                         </div>
+                     `
+                 },
+                 
+                 binomPdf: {
+                     title: 'Binomial Pdf',
+                     content: `
+                         <div class="space-y-4">
+                             <div class="bg-blue-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📋 Example Question:</h4>
+                                 <p class="text-sm">A fair coin is flipped 10 times. What is the probability of getting exactly 3 heads?</p>
+                             </div>
+                             
+                             <div class="bg-green-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">🔧 How to Use:</h4>
+                                 <ol class="text-sm list-decimal list-inside space-y-1">
+                                     <li>Click "Stats Menu" → "Binomial Pdf"</li>
+                                     <li>Enter n = 10 (number of trials)</li>
+                                     <li>Enter p = 0.5 (probability of success)</li>
+                                     <li>Enter k = 3 (number of successes)</li>
+                                     <li>Click "OK" to see results</li>
+                                 </ol>
+                             </div>
+                             
+                             <div class="bg-yellow-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📊 What You'll Get:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Probability:</strong> 0.1172 (or about 11.7%)</li>
+                                 </ul>
+                             </div>
+                             
+                             <div class="bg-purple-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">💡 Key Concepts:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Binomial Distribution:</strong> Models number of successes in n independent trials</li>
+                                     <li><strong>Pdf:</strong> Probability Density Function - exact probability</li>
+                                     <li><strong>Formula:</strong> P(X=k) = C(n,k) × p^k × (1-p)^(n-k)</li>
+                                     <li><strong>Conditions:</strong> Fixed n, independent trials, constant p</li>
+                                 </ul>
+                             </div>
+                         </div>
+                     `
+                 },
+                 
+                 binomCdf: {
+                     title: 'Binomial Cdf',
+                     content: `
+                         <div class="space-y-4">
+                             <div class="bg-blue-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📋 Example Question:</h4>
+                                 <p class="text-sm">A fair coin is flipped 10 times. What is the probability of getting 3 or fewer heads?</p>
+                             </div>
+                             
+                             <div class="bg-green-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">🔧 How to Use:</h4>
+                                 <ol class="text-sm list-decimal list-inside space-y-1">
+                                     <li>Click "Stats Menu" → "Binomial Cdf"</li>
+                                     <li>Enter n = 10 (number of trials)</li>
+                                     <li>Enter p = 0.5 (probability of success)</li>
+                                     <li>Enter k = 3 (maximum number of successes)</li>
+                                     <li>Click "OK" to see results</li>
+                                 </ol>
+                             </div>
+                             
+                             <div class="bg-yellow-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📊 What You'll Get:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Probability:</strong> 0.1719 (or about 17.2%)</li>
+                                 </ul>
+                             </div>
+                             
+                             <div class="bg-purple-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">💡 Key Concepts:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Cdf:</strong> Cumulative Distribution Function - sum of probabilities</li>
+                                     <li><strong>P(X ≤ k):</strong> Probability of k or fewer successes</li>
+                                     <li><strong>Uses:</strong> "At most" or "no more than" problems</li>
+                                     <li><strong>Calculation:</strong> Sum of individual binomial probabilities</li>
+                                 </ul>
+                             </div>
+                         </div>
+                     `
+                 },
+                 
+                 tcdf: {
+                     title: 'tCdf',
+                     content: `
+                         <div class="space-y-4">
+                             <div class="bg-blue-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📋 Example Question:</h4>
+                                 <p class="text-sm">For a t-distribution with 15 degrees of freedom, what is the probability that t is between -1.5 and 2.0?</p>
+                             </div>
+                             
+                             <div class="bg-green-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">🔧 How to Use:</h4>
+                                 <ol class="text-sm list-decimal list-inside space-y-1">
+                                     <li>Click "Stats Menu" → "tCdf"</li>
+                                     <li>Enter Lower Bound = -1.5</li>
+                                     <li>Enter Upper Bound = 2.0</li>
+                                     <li>Enter df = 15 (degrees of freedom)</li>
+                                     <li>Click "OK" to see results</li>
+                                 </ol>
+                             </div>
+                             
+                             <div class="bg-yellow-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📊 What You'll Get:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Probability:</strong> 0.8923 (or about 89.2%)</li>
+                                 </ul>
+                             </div>
+                             
+                             <div class="bg-purple-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">💡 Key Concepts:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>t-Distribution:</strong> Similar to normal but with heavier tails</li>
+                                     <li><strong>Degrees of Freedom:</strong> Affects shape - more df = closer to normal</li>
+                                     <li><strong>Uses:</strong> Small samples, unknown population standard deviation</li>
+                                     <li><strong>Confidence Intervals:</strong> Used for mean estimation with small samples</li>
+                                 </ul>
+                             </div>
+                         </div>
+                     `
+                 },
+                 
+                 invT: {
+                     title: 'invT',
+                     content: `
+                         <div class="space-y-4">
+                             <div class="bg-blue-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📋 Example Question:</h4>
+                                 <p class="text-sm">For a t-distribution with 20 degrees of freedom, find the t-value that has 95% of the area to the left.</p>
+                             </div>
+                             
+                             <div class="bg-green-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">🔧 How to Use:</h4>
+                                 <ol class="text-sm list-decimal list-inside space-y-1">
+                                     <li>Click "Stats Menu" → "invT"</li>
+                                     <li>Enter Area Left = 0.95</li>
+                                     <li>Enter df = 20 (degrees of freedom)</li>
+                                     <li>Click "OK" to see results</li>
+                                 </ol>
+                             </div>
+                             
+                             <div class="bg-yellow-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📊 What You'll Get:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>t-value:</strong> 1.7247</li>
+                                 </ul>
+                             </div>
+                             
+                             <div class="bg-purple-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">💡 Key Concepts:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Inverse Function:</strong> Finds t-value for given probability</li>
+                                     <li><strong>Critical Value:</strong> Used in confidence intervals and hypothesis tests</li>
+                                     <li><strong>Area Left:</strong> Cumulative probability from -∞ to the t-value</li>
+                                     <li><strong>Applications:</strong> Finding critical values for t-tests</li>
+                                 </ul>
+                             </div>
+                         </div>
+                     `
+                 },
+                 
+                 chi2Cdf: {
+                     title: 'χ²Cdf',
+                     content: `
+                         <div class="space-y-4">
+                             <div class="bg-blue-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📋 Example Question:</h4>
+                                 <p class="text-sm">For a chi-square distribution with 8 degrees of freedom, what is the probability that χ² is between 2 and 15?</p>
+                             </div>
+                             
+                             <div class="bg-green-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">🔧 How to Use:</h4>
+                                 <ol class="text-sm list-decimal list-inside space-y-1">
+                                     <li>Click "Stats Menu" → "χ²Cdf"</li>
+                                     <li>Enter Lower Bound = 2</li>
+                                     <li>Enter Upper Bound = 15</li>
+                                     <li>Enter df = 8 (degrees of freedom)</li>
+                                     <li>Click "OK" to see results</li>
+                                 </ol>
+                             </div>
+                             
+                             <div class="bg-yellow-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📊 What You'll Get:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Probability:</strong> 0.8472 (or about 84.7%)</li>
+                                 </ul>
+                             </div>
+                             
+                             <div class="bg-purple-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">💡 Key Concepts:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Chi-Square Distribution:</strong> Always positive, right-skewed</li>
+                                     <li><strong>Degrees of Freedom:</strong> Determines shape and spread</li>
+                                     <li><strong>Uses:</strong> Variance tests, goodness-of-fit, independence tests</li>
+                                     <li><strong>Properties:</strong> Sum of squared standard normal variables</li>
+                                 </ul>
+                             </div>
+                         </div>
+                     `
+                 },
+                 
+                 linReg: {
+                     title: 'LinReg (a+bx)',
+                     content: `
+                         <div class="space-y-4">
+                             <div class="bg-blue-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📋 Example Question:</h4>
+                                 <p class="text-sm">A researcher wants to find the linear relationship between study hours and test scores. Data shows: Hours: [2,4,6,8,10], Scores: [65,70,75,80,85]. Find the regression equation.</p>
+                             </div>
+                             
+                             <div class="bg-green-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">🔧 How to Use:</h4>
+                                 <ol class="text-sm list-decimal list-inside space-y-1">
+                                     <li>Enter your data in the spreadsheet</li>
+                                     <li>Click "Stats Menu" → "LinReg (a+bx)"</li>
+                                     <li>Select X column (hours) from dropdown</li>
+                                     <li>Select Y column (scores) from dropdown</li>
+                                     <li>Click "OK" to see results</li>
+                                 </ol>
+                             </div>
+                             
+                             <div class="bg-yellow-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📊 What You'll Get:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Regression Equation:</strong> ŷ = 60 + 2.5x</li>
+                                     <li><strong>Correlation Coefficient:</strong> r = 1.0</li>
+                                     <li><strong>Coefficient of Determination:</strong> r² = 1.0</li>
+                                     <li><strong>Slope:</strong> b = 2.5 (for each hour, score increases by 2.5)</li>
+                                     <li><strong>Y-intercept:</strong> a = 60 (predicted score with 0 hours)</li>
+                                 </ul>
+                             </div>
+                             
+                             <div class="bg-purple-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">💡 Key Concepts:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Linear Regression:</strong> Models linear relationship between variables</li>
+                                     <li><strong>Equation Form:</strong> ŷ = a + bx (y-intercept + slope × x)</li>
+                                     <li><strong>Y-intercept (a):</strong> Predicted y-value when x = 0</li>
+                                     <li><strong>Slope (b):</strong> Change in y for each unit increase in x</li>
+                                     <li><strong>Correlation (r):</strong> Strength and direction of linear relationship (-1 to +1)</li>
+                                     <li><strong>Coefficient of Determination (r²):</strong> 100% of variation in test scores is explained by the linear relationship with study hours</li>
+                                     <li><strong>Prediction:</strong> Use equation to predict y for given x values</li>
+                                 </ul>
+                             </div>
+                         </div>
+                     `
+                 },
+                 
+                 binomPdf: {
+                     title: 'Binomial Pdf',
+                     content: `
+                         <div class="space-y-4">
+                             <div class="bg-blue-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📋 Example Question:</h4>
+                                 <p class="text-sm">A fair coin is flipped 10 times. What is the probability of getting exactly 3 heads?</p>
+                             </div>
+                             
+                             <div class="bg-green-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">🔧 How to Use:</h4>
+                                 <ol class="text-sm list-decimal list-inside space-y-1">
+                                     <li>Click "Stats Menu" → "Binomial Pdf"</li>
+                                     <li>Enter n = 10 (number of trials)</li>
+                                     <li>Enter p = 0.5 (probability of success)</li>
+                                     <li>Enter k = 3 (number of successes)</li>
+                                     <li>Click "OK" to see results</li>
+                                 </ol>
+                             </div>
+                             
+                             <div class="bg-yellow-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📊 What You'll Get:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Probability:</strong> 0.1172 (or about 11.7%)</li>
+                                 </ul>
+                             </div>
+                             
+                             <div class="bg-purple-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">💡 Key Concepts:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Binomial Distribution:</strong> Models number of successes in n independent trials</li>
+                                     <li><strong>Pdf:</strong> Probability Density Function - exact probability</li>
+                                     <li><strong>Formula:</strong> P(X=k) = C(n,k) × p^k × (1-p)^(n-k)</li>
+                                     <li><strong>Conditions:</strong> Fixed n, independent trials, constant p</li>
+                                 </ul>
+                             </div>
+                         </div>
+                     `
+                 },
+                 
+                 binomCdf: {
+                     title: 'Binomial Cdf',
+                     content: `
+                         <div class="space-y-4">
+                             <div class="bg-blue-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📋 Example Question:</h4>
+                                 <p class="text-sm">A fair coin is flipped 10 times. What is the probability of getting 3 or fewer heads?</p>
+                             </div>
+                             
+                             <div class="bg-green-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">🔧 How to Use:</h4>
+                                 <ol class="text-sm list-decimal list-inside space-y-1">
+                                     <li>Click "Stats Menu" → "Binomial Cdf"</li>
+                                     <li>Enter n = 10 (number of trials)</li>
+                                     <li>Enter p = 0.5 (probability of success)</li>
+                                     <li>Enter k = 3 (maximum number of successes)</li>
+                                     <li>Click "OK" to see results</li>
+                                 </ol>
+                             </div>
+                             
+                             <div class="bg-yellow-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📊 What You'll Get:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Probability:</strong> 0.1719 (or about 17.2%)</li>
+                                 </ul>
+                             </div>
+                             
+                             <div class="bg-purple-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">💡 Key Concepts:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Cdf:</strong> Cumulative Distribution Function - sum of probabilities</li>
+                                     <li><strong>P(X ≤ k):</strong> Probability of k or fewer successes</li>
+                                     <li><strong>Uses:</strong> "At most" or "no more than" problems</li>
+                                     <li><strong>Calculation:</strong> Sum of individual binomial probabilities</li>
+                                 </ul>
+                             </div>
+                         </div>
+                     `
+                 },
+                 
+                 tcdf: {
+                     title: 'tCdf',
+                     content: `
+                         <div class="space-y-4">
+                             <div class="bg-blue-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📋 Example Question:</h4>
+                                 <p class="text-sm">For a t-distribution with 15 degrees of freedom, what is the probability that t is between -1.5 and 2.0?</p>
+                             </div>
+                             
+                             <div class="bg-green-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">🔧 How to Use:</h4>
+                                 <ol class="text-sm list-decimal list-inside space-y-1">
+                                     <li>Click "Stats Menu" → "tCdf"</li>
+                                     <li>Enter Lower Bound = -1.5</li>
+                                     <li>Enter Upper Bound = 2.0</li>
+                                     <li>Enter df = 15 (degrees of freedom)</li>
+                                     <li>Click "OK" to see results</li>
+                                 </ol>
+                             </div>
+                             
+                             <div class="bg-yellow-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📊 What You'll Get:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Probability:</strong> 0.8923 (or about 89.2%)</li>
+                                 </ul>
+                             </div>
+                             
+                             <div class="bg-purple-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">💡 Key Concepts:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>t-Distribution:</strong> Similar to normal but with heavier tails</li>
+                                     <li><strong>Degrees of Freedom:</strong> Affects shape - more df = closer to normal</li>
+                                     <li><strong>Uses:</strong> Small samples, unknown population standard deviation</li>
+                                     <li><strong>Confidence Intervals:</strong> Used for mean estimation with small samples</li>
+                                 </ul>
+                             </div>
+                         </div>
+                     `
+                 },
+                 
+                 invT: {
+                     title: 'invT',
+                     content: `
+                         <div class="space-y-4">
+                             <div class="bg-blue-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📋 Example Question:</h4>
+                                 <p class="text-sm">For a t-distribution with 20 degrees of freedom, find the t-value that has 95% of the area to the left.</p>
+                             </div>
+                             
+                             <div class="bg-green-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">🔧 How to Use:</h4>
+                                 <ol class="text-sm list-decimal list-inside space-y-1">
+                                     <li>Click "Stats Menu" → "invT"</li>
+                                     <li>Enter Area Left = 0.95</li>
+                                     <li>Enter df = 20 (degrees of freedom)</li>
+                                     <li>Click "OK" to see results</li>
+                                 </ol>
+                             </div>
+                             
+                             <div class="bg-yellow-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📊 What You'll Get:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>t-value:</strong> 1.7247</li>
+                                 </ul>
+                             </div>
+                             
+                             <div class="bg-purple-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">💡 Key Concepts:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Inverse Function:</strong> Finds t-value for given probability</li>
+                                     <li><strong>Critical Value:</strong> Used in confidence intervals and hypothesis tests</li>
+                                     <li><strong>Area Left:</strong> Cumulative probability from -∞ to the t-value</li>
+                                     <li><strong>Applications:</strong> Finding critical values for t-tests</li>
+                                 </ul>
+                             </div>
+                         </div>
+                     `
+                 },
+                 
+                 chi2Cdf: {
+                     title: 'χ²Cdf',
+                     content: `
+                         <div class="space-y-4">
+                             <div class="bg-blue-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📋 Example Question:</h4>
+                                 <p class="text-sm">For a chi-square distribution with 8 degrees of freedom, what is the probability that χ² is between 2 and 15?</p>
+                             </div>
+                             
+                             <div class="bg-green-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">🔧 How to Use:</h4>
+                                 <ol class="text-sm list-decimal list-inside space-y-1">
+                                     <li>Click "Stats Menu" → "χ²Cdf"</li>
+                                     <li>Enter Lower Bound = 2</li>
+                                     <li>Enter Upper Bound = 15</li>
+                                     <li>Enter df = 8 (degrees of freedom)</li>
+                                     <li>Click "OK" to see results</li>
+                                 </ol>
+                             </div>
+                             
+                             <div class="bg-yellow-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📊 What You'll Get:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Probability:</strong> 0.8472 (or about 84.7%)</li>
+                                 </ul>
+                             </div>
+                             
+                             <div class="bg-purple-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">💡 Key Concepts:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Chi-Square Distribution:</strong> Always positive, right-skewed</li>
+                                     <li><strong>Degrees of Freedom:</strong> Determines shape and spread</li>
+                                     <li><strong>Uses:</strong> Variance tests, goodness-of-fit, independence tests</li>
+                                     <li><strong>Properties:</strong> Sum of squared standard normal variables</li>
+                                 </ul>
+                             </div>
+                         </div>
+                     `
+                 },
+                 
+                 twoSampTInt: {
+                     title: '2-Sample t-Interval (mean)',
+                     content: `
+                         <div class="space-y-4">
+                             <div class="bg-blue-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📋 Example Question:</h4>
+                                 <p class="text-sm">A researcher wants to estimate the difference in average test scores between two teaching methods. Method A: n₁=25, x̄₁=78, sx₁=8. Method B: n₂=30, x̄₂=82, sx₂=10. Find a 95% confidence interval for μ₁-μ₂.</p>
+                             </div>
+                             
+                             <div class="bg-green-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">🔧 How to Use:</h4>
+                                 <ol class="text-sm list-decimal list-inside space-y-1">
+                                     <li>Click "Stats Menu" → "2-Sample t-Interval (mean)"</li>
+                                     <li>Enter x̄₁ = 78 (first sample mean)</li>
+                                     <li>Enter sx₁ = 8 (first sample std dev)</li>
+                                     <li>Enter n₁ = 25 (first sample size)</li>
+                                     <li>Enter x̄₂ = 82 (second sample mean)</li>
+                                     <li>Enter sx₂ = 10 (second sample std dev)</li>
+                                     <li>Enter n₂ = 30 (second sample size)</li>
+                                     <li>Enter C-Level = 0.95</li>
+                                     <li>Click "OK" to see results</li>
+                                 </ol>
+                             </div>
+                             
+                             <div class="bg-yellow-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📊 What You'll Get:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Confidence Interval:</strong> (-8.2, 0.2)</li>
+                                     <li><strong>Margin of Error:</strong> 4.2</li>
+                                     <li><strong>df:</strong> 24 (degrees of freedom)</li>
+                                 </ul>
+                             </div>
+                             
+                             <div class="bg-purple-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">💡 Key Concepts:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Two-Sample:</strong> Comparing means from two independent groups</li>
+                                     <li><strong>Independent Samples:</strong> No relationship between groups</li>
+                                     <li><strong>Pooled vs Unpooled:</strong> This uses unpooled (Welch's) method</li>
+                                     <li><strong>Interpretation:</strong> "We are 95% confident that the true difference in means is between -8.2 and 0.2."</li>
+                                 </ul>
+                             </div>
+                         </div>
+                     `
+                 },
+                 
+                 propZInt: {
+                     title: '1-Sample z-Interval (proportion)',
+                     content: `
+                         <div class="space-y-4">
+                             <div class="bg-blue-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📋 Example Question:</h4>
+                                 <p class="text-sm">In a survey of 500 voters, 280 said they support a new policy. Find a 90% confidence interval for the true proportion of voters who support the policy.</p>
+                             </div>
+                             
+                             <div class="bg-green-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">🔧 How to Use:</h4>
+                                 <ol class="text-sm list-decimal list-inside space-y-1">
+                                     <li>Click "Stats Menu" → "1-Sample z-Interval (proportion)"</li>
+                                     <li>Enter x = 280 (number of successes)</li>
+                                     <li>Enter n = 500 (sample size)</li>
+                                     <li>Enter C-Level = 0.90</li>
+                                     <li>Click "OK" to see results</li>
+                                 </ol>
+                             </div>
+                             
+                             <div class="bg-yellow-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📊 What You'll Get:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Confidence Interval:</strong> (0.532, 0.588)</li>
+                                     <li><strong>Sample Proportion:</strong> p̂ = 0.56</li>
+                                     <li><strong>Margin of Error:</strong> 0.028</li>
+                                 </ul>
+                             </div>
+                             
+                             <div class="bg-purple-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">💡 Key Concepts:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Proportion:</strong> Fraction of population with characteristic</li>
+                                     <li><strong>Conditions:</strong> np ≥ 10 and n(1-p) ≥ 10</li>
+                                     <li><strong>Z-interval:</strong> Uses normal distribution approximation</li>
+                                     <li><strong>Interpretation:</strong> "We are 90% confident that between 53.2% and 58.8% of voters support the policy."</li>
+                                 </ul>
+                             </div>
+                         </div>
+                     `
+                 },
+                 
+                 twoPropZInt: {
+                     title: '2-Sample z-Interval (proportion)',
+                     content: `
+                         <div class="space-y-4">
+                             <div class="bg-blue-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📋 Example Question:</h4>
+                                 <p class="text-sm">Compare support for a policy between two regions. Region A: 150 out of 300 support. Region B: 200 out of 400 support. Find a 95% confidence interval for p₁-p₂.</p>
+                             </div>
+                             
+                             <div class="bg-green-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">🔧 How to Use:</h4>
+                                 <ol class="text-sm list-decimal list-inside space-y-1">
+                                     <li>Click "Stats Menu" → "2-Sample z-Interval (proportion)"</li>
+                                     <li>Enter x₁ = 150 (first sample successes)</li>
+                                     <li>Enter n₁ = 300 (first sample size)</li>
+                                     <li>Enter x₂ = 200 (second sample successes)</li>
+                                     <li>Enter n₂ = 400 (second sample size)</li>
+                                     <li>Enter C-Level = 0.95</li>
+                                     <li>Click "OK" to see results</li>
+                                 </ol>
+                             </div>
+                             
+                             <div class="bg-yellow-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📊 What You'll Get:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Confidence Interval:</strong> (-0.08, 0.08)</li>
+                                     <li><strong>Sample Proportions:</strong> p̂₁ = 0.50, p̂₂ = 0.50</li>
+                                     <li><strong>Margin of Error:</strong> 0.08</li>
+                                 </ul>
+                             </div>
+                             
+                             <div class="bg-purple-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">💡 Key Concepts:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Difference in Proportions:</strong> p₁ - p₂</li>
+                                     <li><strong>Independent Samples:</strong> No relationship between groups</li>
+                                     <li><strong>Conditions:</strong> Both samples meet np ≥ 10 and n(1-p) ≥ 10</li>
+                                     <li><strong>Interpretation:</strong> "We are 95% confident that the difference in support is between -8% and +8%."</li>
+                                 </ul>
+                             </div>
+                         </div>
+                     `
+                 },
+                 
+                 twoSampTTest: {
+                     title: '2-Sample t-Test (mean)',
+                     content: `
+                         <div class="space-y-4">
+                             <div class="bg-blue-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📋 Example Question:</h4>
+                                 <p class="text-sm">Test if there's a significant difference in test scores between two teaching methods. Method A: n₁=25, x̄₁=78, sx₁=8. Method B: n₂=30, x̄₂=82, sx₂=10. Use α=0.05.</p>
+                             </div>
+                             
+                             <div class="bg-green-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">🔧 How to Use:</h4>
+                                 <ol class="text-sm list-decimal list-inside space-y-1">
+                                     <li>Click "Stats Menu" → "2-Sample t-Test (mean)"</li>
+                                     <li>Enter x̄₁ = 78 (first sample mean)</li>
+                                     <li>Enter sx₁ = 8 (first sample std dev)</li>
+                                     <li>Enter n₁ = 25 (first sample size)</li>
+                                     <li>Enter x̄₂ = 82 (second sample mean)</li>
+                                     <li>Enter sx₂ = 10 (second sample std dev)</li>
+                                     <li>Enter n₂ = 30 (second sample size)</li>
+                                     <li>Select alternative: "μ₁ ≠ μ₂"</li>
+                                     <li>Click "OK" to see results</li>
+                                 </ol>
+                             </div>
+                             
+                             <div class="bg-yellow-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📊 What You'll Get:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>t-statistic:</strong> -1.67</li>
+                                     <li><strong>p-value:</strong> 0.1024</li>
+                                     <li><strong>df:</strong> 24 (degrees of freedom)</li>
+                                 </ul>
+                             </div>
+                             
+                             <div class="bg-purple-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">💡 Key Concepts:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Null Hypothesis:</strong> H₀: μ₁ = μ₂ (no difference)</li>
+                                     <li><strong>Alternative:</strong> Hₐ: μ₁ ≠ μ₂ (two-tailed test)</li>
+                                     <li><strong>Decision Rule:</strong> If p < α, reject H₀</li>
+                                     <li><strong>Conclusion:</strong> p = 0.1024 > 0.05, fail to reject H₀</li>
+                                 </ul>
+                             </div>
+                         </div>
+                     `
+                 },
+                 
+                 propZTest: {
+                     title: '1-Sample z-Test (proportion)',
+                     content: `
+                         <div class="space-y-4">
+                             <div class="bg-blue-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📋 Example Question:</h4>
+                                 <p class="text-sm">A company claims 60% of customers are satisfied. In a survey of 200 customers, 110 are satisfied. Test if the true proportion differs from 60% at α=0.05.</p>
+                             </div>
+                             
+                             <div class="bg-green-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">🔧 How to Use:</h4>
+                                 <ol class="text-sm list-decimal list-inside space-y-1">
+                                     <li>Click "Stats Menu" → "1-Sample z-Test (proportion)"</li>
+                                     <li>Enter p₀ = 0.60 (null hypothesis proportion)</li>
+                                     <li>Enter x = 110 (number of successes)</li>
+                                     <li>Enter n = 200 (sample size)</li>
+                                     <li>Select alternative: "p ≠ p₀"</li>
+                                     <li>Click "OK" to see results</li>
+                                 </ol>
+                             </div>
+                             
+                             <div class="bg-yellow-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📊 What You'll Get:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>z-statistic:</strong> -1.44</li>
+                                     <li><strong>p-value:</strong> 0.1498</li>
+                                     <li><strong>Sample Proportion:</strong> p̂ = 0.55</li>
+                                 </ul>
+                             </div>
+                             
+                             <div class="bg-purple-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">💡 Key Concepts:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Null Hypothesis:</strong> H₀: p = 0.60</li>
+                                     <li><strong>Alternative:</strong> Hₐ: p ≠ 0.60</li>
+                                     <li><strong>Conditions:</strong> np₀ ≥ 10 and n(1-p₀) ≥ 10</li>
+                                     <li><strong>Conclusion:</strong> p = 0.1498 > 0.05, fail to reject H₀</li>
+                                 </ul>
+                             </div>
+                         </div>
+                     `
+                 },
+                 
+                 twoPropZTest: {
+                     title: '2-Sample z-Test (proportion)',
+                     content: `
+                         <div class="space-y-4">
+                             <div class="bg-blue-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📋 Example Question:</h4>
+                                 <p class="text-sm">Test if there's a significant difference in approval rates between two products. Product A: 80 out of 100 approve. Product B: 70 out of 100 approve. Use α=0.05.</p>
+                             </div>
+                             
+                             <div class="bg-green-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">🔧 How to Use:</h4>
+                                 <ol class="text-sm list-decimal list-inside space-y-1">
+                                     <li>Click "Stats Menu" → "2-Sample z-Test (proportion)"</li>
+                                     <li>Enter x₁ = 80 (first sample successes)</li>
+                                     <li>Enter n₁ = 100 (first sample size)</li>
+                                     <li>Enter x₂ = 70 (second sample successes)</li>
+                                     <li>Enter n₂ = 100 (second sample size)</li>
+                                     <li>Select alternative: "p₁ ≠ p₂"</li>
+                                     <li>Click "OK" to see results</li>
+                                 </ol>
+                             </div>
+                             
+                             <div class="bg-yellow-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📊 What You'll Get:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>z-statistic:</strong> 1.58</li>
+                                     <li><strong>p-value:</strong> 0.1142</li>
+                                     <li><strong>Sample Proportions:</strong> p̂₁ = 0.80, p̂₂ = 0.70</li>
+                                 </ul>
+                             </div>
+                             
+                             <div class="bg-purple-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">💡 Key Concepts:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Null Hypothesis:</strong> H₀: p₁ = p₂</li>
+                                     <li><strong>Alternative:</strong> Hₐ: p₁ ≠ p₂</li>
+                                     <li><strong>Pooled Proportion:</strong> Used for standard error calculation</li>
+                                     <li><strong>Conclusion:</strong> p = 0.1142 > 0.05, fail to reject H₀</li>
+                                 </ul>
+                             </div>
+                         </div>
+                     `
+                 },
+                 
+                 chi2Test: {
+                     title: 'χ²-Test (independence)',
+                     content: `
+                         <div class="space-y-4">
+                             <div class="bg-blue-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📋 Example Question:</h4>
+                                 <p class="text-sm">Test if political party preference is independent of gender. Data: Democrats (Male: 45, Female: 55), Republicans (Male: 40, Female: 30), Independents (Male: 15, Female: 15).</p>
+                             </div>
+                             
+                             <div class="bg-green-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">🔧 How to Use:</h4>
+                                 <ol class="text-sm list-decimal list-inside space-y-1">
+                                     <li>Click "Stats Menu" → "χ²-Test (independence)"</li>
+                                     <li>Enter observed matrix: "45,55;40,30;15,15"</li>
+                                     <li>Click "OK" to see results</li>
+                                 </ol>
+                             </div>
+                             
+                             <div class="bg-yellow-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📊 What You'll Get:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>χ²-statistic:</strong> 4.85</li>
+                                     <li><strong>p-value:</strong> 0.0884</li>
+                                     <li><strong>df:</strong> 2 (degrees of freedom)</li>
+                                 </ul>
+                             </div>
+                             
+                             <div class="bg-purple-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">💡 Key Concepts:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Null Hypothesis:</strong> H₀: Variables are independent</li>
+                                     <li><strong>Alternative:</strong> Hₐ: Variables are dependent</li>
+                                     <li><strong>Expected Counts:</strong> (row total × column total) ÷ grand total</li>
+                                     <li><strong>Conditions:</strong> All expected counts ≥ 5</li>
+                                 </ul>
+                             </div>
+                         </div>
+                     `
+                 },
+                 
+                 chi2GOFTest: {
+                     title: 'χ²-GOF-Test (goodness of fit)',
+                     content: `
+                         <div class="space-y-4">
+                             <div class="bg-blue-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📋 Example Question:</h4>
+                                 <p class="text-sm">Test if a die is fair. Rolled 60 times with results: 1(8), 2(12), 3(9), 4(11), 5(10), 6(10). Expected frequency for each is 10.</p>
+                             </div>
+                             
+                             <div class="bg-green-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">🔧 How to Use:</h4>
+                                 <ol class="text-sm list-decimal list-inside space-y-1">
+                                     <li>Click "Stats Menu" → "χ²-GOF-Test (goodness of fit)"</li>
+                                     <li>Enter observed: "8,12,9,11,10,10"</li>
+                                     <li>Enter expected: "10,10,10,10,10,10"</li>
+                                     <li>Click "OK" to see results</li>
+                                 </ol>
+                             </div>
+                             
+                             <div class="bg-yellow-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">📊 What You'll Get:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>χ²-statistic:</strong> 1.4</li>
+                                     <li><strong>p-value:</strong> 0.9247</li>
+                                     <li><strong>df:</strong> 5 (degrees of freedom)</li>
+                                 </ul>
+                             </div>
+                             
+                             <div class="bg-purple-50 p-4 rounded">
+                                 <h4 class="font-bold mb-2">💡 Key Concepts:</h4>
+                                 <ul class="text-sm list-disc list-inside space-y-1">
+                                     <li><strong>Null Hypothesis:</strong> H₀: Data follows expected distribution</li>
+                                     <li><strong>Alternative:</strong> Hₐ: Data doesn't follow expected distribution</li>
+                                     <li><strong>Expected Frequencies:</strong> Based on hypothesized distribution</li>
+                                     <li><strong>Conditions:</strong> All expected frequencies ≥ 5</li>
+                                 </ul>
+                             </div>
+                         </div>
+                     `
+                 }
             };
             
             return helpExamples[helpType] || null;
@@ -1456,6 +2277,8 @@ export default function Home() {
           border-radius: 0.5rem; 
           min-height: 0;
           min-width: 0;
+          width: 100%;
+          height: 100%;
         }
         #graph-plot[draggable="true"] { cursor: grab; }
         #graph-context-menu {
